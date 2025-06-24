@@ -1,5 +1,5 @@
-import dbConnect from '../../../utils/dbConnect.js';
-import Tutorial from '../../../models/Tutorial.js';
+import dbConnect from '../../utils/dbConnect.js';
+import Tutorial from '../../models/Tutorial.js';
 
 export default async function handler(req, res) {
   await dbConnect();
@@ -8,9 +8,7 @@ export default async function handler(req, res) {
   if (req.method === 'DELETE') {
     try {
       const deletedTutorial = await Tutorial.findByIdAndDelete(id);
-      if (!deletedTutorial) {
-        return res.status(404).json({ message: 'Tutorial not found' });
-      }
+      if (!deletedTutorial) return res.status(404).json({ message: 'Tutorial not found' });
       res.status(200).json({ message: 'Tutorial deleted successfully' });
     } catch (error) {
       res.status(500).json({ message: 'Error deleting tutorial' });
