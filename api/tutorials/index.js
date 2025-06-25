@@ -1,6 +1,6 @@
 
-import dbConnect from '../../../utils/dbConnect';
-import Tutorial from '../../../models/Tutorial';
+import dbConnect from '../../utils/dbConnect';
+import Tutorial from '../../models/Tutorial';
 
 export default async function handler(req, res) {
   await dbConnect();
