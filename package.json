@@ -1,7 +1,7 @@
+
 {
   "name": "mechanic-bano-backend",
   "version": "1.0.0",
-  "type": "module",
   "dependencies": {
     "mongoose": "^8.16.0"
   }
