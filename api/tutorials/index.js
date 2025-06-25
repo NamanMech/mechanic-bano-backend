@@ -1,21 +1,8 @@
-import dbConnect from '../../utils/dbConnect.js';
-import Tutorial from '../../models/Tutorial.js';
 
-export const config = {
-  api: {
-    bodyParser: true,
-  },
-};
+import dbConnect from '../../../utils/dbConnect';
+import Tutorial from '../../../models/Tutorial';
 
 export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
-
   await dbConnect();
 
   if (req.method === 'GET') {
@@ -31,7 +18,6 @@ export default async function handler(req, res) {
       await tutorial.save();
       res.status(201).json(tutorial);
     } catch (error) {
-      console.error('POST error:', error);
       res.status(500).json({ message: 'Error adding tutorial' });
     }
   } else {
