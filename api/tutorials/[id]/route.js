@@ -1,4 +1,3 @@
-// api/tutorials/[id]/route.js
 import dbConnect from '../../../../config/dbConnect';
 import Tutorial from '../../../../models/Tutorial';
 
