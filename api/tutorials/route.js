@@ -1,4 +1,3 @@
-// api/tutorials/route.js
 import dbConnect from '../../../config/dbConnect';
 import Tutorial from '../../../models/Tutorial';
 
@@ -12,8 +11,8 @@ export const POST = async (req) => {
   await dbConnect();
   const { title, description, youtubeLink } = await req.json();
 
-  const tutorial = new Tutorial({ title, description, youtubeLink });
-  await tutorial.save();
+  const newTutorial = new Tutorial({ title, description, youtubeLink });
+  await newTutorial.save();
 
   return new Response(JSON.stringify({ message: 'Tutorial added successfully' }), { status: 201 });
 };
