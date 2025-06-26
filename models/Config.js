@@ -1,11 +1,8 @@
-// models/Config.js
 import mongoose from 'mongoose';
 
-const configSchema = new mongoose.Schema({
+const ConfigSchema = new mongoose.Schema({
   websiteName: String,
   logoURL: String,
 });
 
-const Config = mongoose.models.Config || mongoose.model('Config', configSchema);
-
-export default Config;
+export default mongoose.models.Config || mongoose.model('Config', ConfigSchema);
