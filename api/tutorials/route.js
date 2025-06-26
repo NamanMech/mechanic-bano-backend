@@ -1,5 +1,5 @@
 // api/tutorials/route.js
-import dbConnect from '../../config/dbConnect';
+import dbConnect from '../../../config/dbConnect';
 import Tutorial from '../../../models/Tutorial';
 
 export const GET = async () => {
