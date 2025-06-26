@@ -1,3 +1,4 @@
+// models/Tutorial.js
 import mongoose from 'mongoose';
 
 const tutorialSchema = new mongoose.Schema({
@@ -6,4 +7,6 @@ const tutorialSchema = new mongoose.Schema({
   youtubeLink: String,
 });
 
-export default mongoose.models.Tutorial || mongoose.model('Tutorial', tutorialSchema);
+const Tutorial = mongoose.models.Tutorial || mongoose.model('Tutorial', tutorialSchema);
+
+export default Tutorial;
