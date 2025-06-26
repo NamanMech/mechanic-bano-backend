@@ -1,5 +1,4 @@
-
-import dbConnect from '../../utils/dbConnect';
+import dbConnect from '../../config/dbConnect';
 import Tutorial from '../../models/Tutorial';
 
 export default async function handler(req, res) {
@@ -14,9 +13,10 @@ export default async function handler(req, res) {
     }
   } else if (req.method === 'POST') {
     try {
-      const tutorial = new Tutorial(req.body);
-      await tutorial.save();
-      res.status(201).json(tutorial);
+      const { title, description, youtubeLink } = req.body;
+      const newTutorial = new Tutorial({ title, description, youtubeLink });
+      await newTutorial.save();
+      res.status(201).json({ message: 'Tutorial added successfully' });
     } catch (error) {
       res.status(500).json({ message: 'Error adding tutorial' });
     }
