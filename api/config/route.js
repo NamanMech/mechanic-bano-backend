@@ -1,3 +1,4 @@
+// api/config/route.js
 import dbConnect from '../../../config/dbConnect';
 import Config from '../../../models/Config';
 
