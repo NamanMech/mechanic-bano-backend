@@ -1,6 +1,7 @@
 // api/config/route.js
-import dbConnect from '../../../config/dbConnect';
-import Config from '../../../models/Config';
+
+import dbConnect from '../../config/dbConnect';
+import Config from '../../models/Config';
 
 export const GET = async () => {
   await dbConnect();
@@ -15,24 +16,24 @@ export const GET = async () => {
 };
 
 export const PUT = async (req) => {
-  await dbConnect();
-  const body = await req.json();
+  try {
+    await dbConnect();
+    const { websiteName, logoURL } = await req.json();
 
-  let config = await Config.findOne();
-  if (!config) {
-    config = new Config({ websiteName: 'Mechanic Bano', logoURL: '' });
+    let config = await Config.findOne();
+    if (!config) {
+      return new Response(JSON.stringify({ message: 'Config not found' }), { status: 404 });
+    }
+
+    // Smart update
+    if (websiteName !== undefined) config.websiteName = websiteName;
+    if (logoURL !== undefined) config.logoURL = logoURL;
+
+    await config.save();
+
+    return new Response(JSON.stringify({ message: 'Config updated successfully' }), { status: 200 });
+  } catch (error) {
+    console.error('Backend Error:', error);
+    return new Response(JSON.stringify({ message: 'Server error' }), { status: 500 });
   }
-
-  // Smart update: only update fields that are sent
-  if (body.websiteName !== undefined) {
-    config.websiteName = body.websiteName;
-  }
-
-  if (body.logoURL !== undefined) {
-    config.logoURL = body.logoURL;
-  }
-
-  await config.save();
-
-  return new Response(JSON.stringify({ message: 'Config updated successfully' }), { status: 200 });
 };
