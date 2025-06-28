@@ -3,22 +3,22 @@ import { connectDB } from '../utils/connectDB';
 export default async function handler(req, res) {
   const client = await connectDB();
   const db = client.db('mechanic_bano');
-  const collection = db.collection('categories');
+  const collection = db.collection('videos');
 
   if (req.method === 'GET') {
-    const categories = await collection.find().toArray();
-    return res.json(categories);
+    const videos = await collection.find().toArray();
+    return res.json(videos);
   }
 
   if (req.method === 'POST') {
-    const { name, description } = req.body;
-    await collection.insertOne({ name, description });
-    return res.json({ message: 'Category added successfully' });
+    const { title, description, link } = req.body;
+    await collection.insertOne({ title, description, link });
+    return res.json({ message: 'Video added successfully' });
   }
 
   if (req.method === 'DELETE') {
     const { id } = req.query;
     await collection.deleteOne({ _id: new ObjectId(id) });
-    return res.json({ message: 'Category deleted successfully' });
+    return res.json({ message: 'Video deleted successfully' });
   }
 }
