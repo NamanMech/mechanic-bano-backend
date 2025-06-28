@@ -1,5 +1,5 @@
-import dbConnect from '../../config/dbConnect';
-import Config from '../../models/Config';
+import dbConnect from '../../../config/dbConnect';
+import Config from '../../../models/Config';
 
 // GET Request to fetch site configuration
 export const GET = async () => {
