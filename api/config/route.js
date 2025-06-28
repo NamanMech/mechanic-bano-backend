@@ -1,49 +1,31 @@
 // api/config/route.js
-const express = require('express');
-const router = express.Router();
-const Config = require('./model');
+import dbConnect from '../../../config/dbConnect';
+import Config from '../../../models/Config';
 
-// CORS Middleware for Serverless Functions
-router.use((req, res, next) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+export const GET = async () => {
+  await dbConnect();
+  let config = await Config.findOne();
 
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
+  if (!config) {
+    config = new Config({ websiteName: 'Mechanic Bano' });
+    await config.save();
   }
 
-  next();
-});
+  return new Response(JSON.stringify(config), { status: 200 });
+};
 
-// GET Config
-router.get('/', async (req, res) => {
-  try {
-    const config = await Config.findOne();
-    res.json(config);
-  } catch (error) {
-    res.status(500).json({ message: 'Server Error' });
-  }
-});
+export const PUT = async (req) => {
+  await dbConnect();
+  const { websiteName } = await req.json();
 
-// PUT Update Site Name
-router.put('/update-site-name', async (req, res) => {
-  try {
-    const { websiteName } = req.body;
-    const config = await Config.findOne();
-
-    if (!config) {
-      return res.status(404).json({ message: 'Configuration not found' });
-    }
-
+  let config = await Config.findOne();
+  if (config) {
     config.websiteName = websiteName;
     await config.save();
-
-    res.json({ message: 'Site name updated successfully' });
-  } catch (error) {
-    console.error('Update Error:', error);
-    res.status(500).json({ message: 'Server Error' });
+  } else {
+    config = new Config({ websiteName });
+    await config.save();
   }
-});
 
-module.exports = router;
+  return new Response(JSON.stringify({ message: 'Site name updated successfully' }), { status: 200 });
+};
