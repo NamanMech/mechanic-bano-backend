@@ -1,4 +1,3 @@
-// api/config/update-site-name/route.js
 import dbConnect from '../../../config/dbConnect';
 import Config from '../../../models/Config';
 
