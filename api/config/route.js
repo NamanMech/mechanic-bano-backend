@@ -1,6 +1,5 @@
-// api/config/route.js
-import dbConnect from '../../../config/dbConnect';
-import Config from '../../../models/Config';
+import dbConnect from '../../config/dbConnect';
+import Config from '../../models/Config';
 
 export const GET = async () => {
   await dbConnect();
