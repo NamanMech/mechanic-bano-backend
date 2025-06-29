@@ -1,7 +1,6 @@
-// api/users.js
-import { connectDB } from '../utils/connectDB.js';
+const { connectDB } = require('../utils/connectDB.js');
 
-export default async function handler(req, res) {
+module.exports = async (req, res) => {
   try {
     const client = await connectDB();
     const db = client.db('mechanic_bano');
@@ -17,4 +16,4 @@ export default async function handler(req, res) {
     console.error('API Error:', error);
     return res.status(500).json({ message: 'Internal Server Error' });
   }
-}
+};
