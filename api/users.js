@@ -1,5 +1,5 @@
 // api/users.js
-const { connectDB } = require('../utils/connectDB');
+const { connectDB } = require('../utils/connectDB.js');
 
 module.exports = async (req, res) => {
   const client = await connectDB();
