@@ -1,24 +1,32 @@
-import { connectDB } from '../utils/connectDB';
+// api/categories.js
+const { MongoClient, ObjectId } = require('mongodb');
+const { connectDB } = require('../utils/connectDB');
 
-export default async function handler(req, res) {
+module.exports = async (req, res) => {
   const client = await connectDB();
   const db = client.db('mechanic_bano');
   const collection = db.collection('categories');
 
   if (req.method === 'GET') {
     const categories = await collection.find().toArray();
-    return res.json(categories);
+    return res.status(200).json(categories);
   }
 
   if (req.method === 'POST') {
-    const { name, description } = req.body;
-    await collection.insertOne({ name, description });
-    return res.json({ message: 'Category added successfully' });
+    let body = '';
+    req.on('data', chunk => {
+      body += chunk.toString();
+    });
+    req.on('end', async () => {
+      const { name, description } = JSON.parse(body);
+      await collection.insertOne({ name, description });
+      return res.status(200).json({ message: 'Category added successfully' });
+    });
   }
 
   if (req.method === 'DELETE') {
     const { id } = req.query;
     await collection.deleteOne({ _id: new ObjectId(id) });
-    return res.json({ message: 'Category deleted successfully' });
+    return res.status(200).json({ message: 'Category deleted successfully' });
   }
-}
+};
