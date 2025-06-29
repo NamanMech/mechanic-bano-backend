@@ -1,10 +1,10 @@
 // utils/connectDB.js
 
-import { MongoClient } from "mongodb";
+const { MongoClient } = require('mongodb');
 
 let cachedClient = null;
 
-export async function connectDB() {
+async function connectDB() {
   if (cachedClient) return cachedClient;
 
   const client = new MongoClient(process.env.MONGO_URI);
@@ -12,3 +12,5 @@ export async function connectDB() {
   cachedClient = client;
   return client;
 }
+
+module.exports = { connectDB };
