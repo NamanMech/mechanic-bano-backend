@@ -1,6 +1,6 @@
 // api/categories.js
-const { MongoClient, ObjectId } = require('mongodb');
 const { connectDB } = require('../utils/connectDB');
+const { ObjectId } = require('mongodb');
 
 module.exports = async (req, res) => {
   const client = await connectDB();
@@ -14,13 +14,11 @@ module.exports = async (req, res) => {
 
   if (req.method === 'POST') {
     let body = '';
-    req.on('data', chunk => {
-      body += chunk.toString();
-    });
+    req.on('data', chunk => { body += chunk.toString(); });
     req.on('end', async () => {
       const { name, description } = JSON.parse(body);
       await collection.insertOne({ name, description });
-      return res.status(200).json({ message: 'Category added successfully' });
+      return res.status(201).json({ message: 'Category added successfully' });
     });
   }
 
