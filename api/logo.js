@@ -1,7 +1,6 @@
-// api/logo.js
-import { connectDB } from '../utils/connectDB.js';
+const { connectDB } = require('../utils/connectDB.js');
 
-export default async function handler(req, res) {
+module.exports = async (req, res) => {
   try {
     const client = await connectDB();
     const db = client.db('mechanic_bano');
@@ -15,11 +14,7 @@ export default async function handler(req, res) {
     if (req.method === 'POST') {
       const { siteName, logoUrl } = req.body;
 
-      if (!siteName || !logoUrl) {
-        return res.status(400).json({ message: 'Site name and logo URL are required' });
-      }
-
-      await collection.deleteMany({}); // Replace existing logo
+      await collection.deleteMany({});
       await collection.insertOne({ siteName, logoUrl });
       return res.status(201).json({ message: 'Logo and site name updated successfully' });
     }
@@ -29,4 +24,4 @@ export default async function handler(req, res) {
     console.error('API Error:', error);
     return res.status(500).json({ message: 'Internal Server Error' });
   }
-}
+};
