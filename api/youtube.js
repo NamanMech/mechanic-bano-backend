@@ -1,5 +1,5 @@
 // api/youtube.js
-const { connectDB } = require('../utils/connectDB');
+const { connectDB } = require('../utils/connectDB.js');
 const { ObjectId } = require('mongodb');
 
 module.exports = async (req, res) => {
