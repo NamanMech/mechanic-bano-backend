@@ -1,7 +1,8 @@
-const { connectDB } = require('../utils/connectDB.js');
-const { ObjectId } = require('mongodb');
+// api/categories.js
+import { connectDB } from '../utils/connectDB.js';
+import { ObjectId } from 'mongodb';
 
-module.exports = async (req, res) => {
+export default async function handler(req, res) {
   try {
     const client = await connectDB();
     const db = client.db('mechanic_bano');
@@ -13,15 +14,23 @@ module.exports = async (req, res) => {
     }
 
     if (req.method === 'POST') {
-      const { categoryName } = req.body;
-      if (!categoryName) return res.status(400).json({ message: 'Category Name is required' });
+      const { name, description } = req.body;
 
-      await collection.insertOne({ categoryName });
+      if (!name || !description) {
+        return res.status(400).json({ message: 'Name and description are required' });
+      }
+
+      await collection.insertOne({ name, description });
       return res.status(201).json({ message: 'Category added successfully' });
     }
 
     if (req.method === 'DELETE') {
       const { id } = req.query;
+
+      if (!id) {
+        return res.status(400).json({ message: 'ID is required for deletion' });
+      }
+
       await collection.deleteOne({ _id: new ObjectId(id) });
       return res.status(200).json({ message: 'Category deleted successfully' });
     }
@@ -31,4 +40,4 @@ module.exports = async (req, res) => {
     console.error('API Error:', error);
     return res.status(500).json({ message: 'Internal Server Error' });
   }
-};
+}
