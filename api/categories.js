@@ -1,5 +1,6 @@
 // api/categories.js
-import { connectDB } from '../utils/connectDB';
+
+import { connectDB } from '../utils/connectDB.js'; // ✅ Add .js extension
 import { ObjectId } from 'mongodb';
 
 export default async function handler(req, res) {
@@ -35,7 +36,6 @@ export default async function handler(req, res) {
       return res.status(200).json({ message: 'Category deleted successfully' });
     }
 
-    // If HTTP method is not allowed
     return res.status(405).json({ message: 'Method Not Allowed' });
   } catch (error) {
     console.error('API Error:', error);
