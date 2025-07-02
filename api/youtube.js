@@ -15,11 +15,13 @@ export default async function handler(req, res) {
   const db = client.db('mechanic_bano');
   const collection = db.collection('youtube_videos');
 
+  // ✅ GET ALL VIDEOS
   if (req.method === 'GET') {
     const videos = await collection.find().toArray();
     return res.status(200).json(videos);
   }
 
+  // ✅ ADD VIDEO
   if (req.method === 'POST') {
     try {
       let body = '';
@@ -28,13 +30,13 @@ export default async function handler(req, res) {
       });
 
       req.on('end', async () => {
-        const { title, description, link, category } = JSON.parse(body);
+        const { title, description, embedLink, originalLink, category } = JSON.parse(body);
 
-        if (!title || !description || !link || !category) {
+        if (!title || !description || !embedLink || !originalLink || !category) {
           return res.status(400).json({ message: 'Missing required fields' });
         }
 
-        const result = await collection.insertOne({ title, description, link, category });
+        const result = await collection.insertOne({ title, description, embedLink, originalLink, category });
         return res.status(201).json({ message: 'YouTube video added successfully', result });
       });
     } catch (error) {
@@ -44,6 +46,7 @@ export default async function handler(req, res) {
     return;
   }
 
+  // ✅ UPDATE VIDEO
   if (req.method === 'PUT') {
     try {
       const { id } = req.query;
@@ -58,15 +61,15 @@ export default async function handler(req, res) {
       });
 
       req.on('end', async () => {
-        const { title, description, link, category } = JSON.parse(body);
+        const { title, description, embedLink, originalLink, category } = JSON.parse(body);
 
-        if (!title || !description || !link || !category) {
+        if (!title || !description || !embedLink || !originalLink || !category) {
           return res.status(400).json({ message: 'Missing required fields' });
         }
 
         await collection.updateOne(
           { _id: new ObjectId(id) },
-          { $set: { title, description, link, category } }
+          { $set: { title, description, embedLink, originalLink, category } }
         );
 
         return res.status(200).json({ message: 'Video updated successfully' });
@@ -78,6 +81,7 @@ export default async function handler(req, res) {
     return;
   }
 
+  // ✅ DELETE VIDEO
   if (req.method === 'DELETE') {
     const { id } = req.query;
 
@@ -89,5 +93,6 @@ export default async function handler(req, res) {
     return res.status(200).json({ message: 'Video deleted successfully' });
   }
 
+  // ✅ METHOD NOT ALLOWED
   return res.status(405).json({ message: 'Method Not Allowed' });
 }
