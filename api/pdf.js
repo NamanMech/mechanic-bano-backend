@@ -1,9 +1,10 @@
+// /api/pdf.js
 import { ObjectId } from 'mongodb';
 import { connectDB } from '../utils/connectDB.js';
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, PUT, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
   if (req.method === 'OPTIONS') {
@@ -23,53 +24,16 @@ export default async function handler(req, res) {
   if (req.method === 'POST') {
     try {
       let body = '';
-      req.on('data', chunk => {
-        body += chunk.toString();
-      });
-
+      req.on('data', chunk => { body += chunk.toString(); });
       req.on('end', async () => {
-        const { title, description, pdfLink, category } = JSON.parse(body);
+        const { title, link } = JSON.parse(body);
 
-        if (!title || !description || !pdfLink || !category) {
+        if (!title || !link) {
           return res.status(400).json({ message: 'Missing required fields' });
         }
 
-        const result = await collection.insertOne({ title, description, pdfLink, category });
+        const result = await collection.insertOne({ title, link });
         return res.status(201).json({ message: 'PDF added successfully', result });
-      });
-    } catch (error) {
-      console.error(error);
-      return res.status(500).json({ message: 'Internal Server Error' });
-    }
-    return;
-  }
-
-  if (req.method === 'PUT') {
-    try {
-      const { id } = req.query;
-
-      if (!id) {
-        return res.status(400).json({ message: 'ID is required' });
-      }
-
-      let body = '';
-      req.on('data', chunk => {
-        body += chunk.toString();
-      });
-
-      req.on('end', async () => {
-        const { title, description, pdfLink, category } = JSON.parse(body);
-
-        if (!title || !description || !pdfLink || !category) {
-          return res.status(400).json({ message: 'Missing required fields' });
-        }
-
-        await collection.updateOne(
-          { _id: new ObjectId(id) },
-          { $set: { title, description, pdfLink, category } }
-        );
-
-        return res.status(200).json({ message: 'PDF updated successfully' });
       });
     } catch (error) {
       console.error(error);
