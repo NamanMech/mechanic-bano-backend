@@ -29,20 +29,13 @@ export default async function handler(req, res) {
       });
 
       req.on('end', async () => {
-        const { title, description, link, category } = JSON.parse(body);
+        const { title, embedLink, originalLink, category } = JSON.parse(body);
 
-        if (!title || !description || !link || !category) {
+        if (!title || !embedLink || !originalLink || !category) {
           return res.status(400).json({ message: 'Missing required fields' });
         }
 
-        // Clean Google Drive Link
-        const fileIdMatch = link.match(/\/d\/(.+?)\//);
-        if (!fileIdMatch) {
-          return res.status(400).json({ message: 'Invalid Google Drive link' });
-        }
-        const cleanedLink = `https://drive.google.com/file/d/${fileIdMatch[1]}/preview`;
-
-        const result = await collection.insertOne({ title, description, link: cleanedLink, category });
+        const result = await collection.insertOne({ title, embedLink, originalLink, category });
         return res.status(201).json({ message: 'PDF added successfully', result });
       });
     } catch (error) {
@@ -66,22 +59,15 @@ export default async function handler(req, res) {
       });
 
       req.on('end', async () => {
-        const { title, description, link, category } = JSON.parse(body);
+        const { title, embedLink, originalLink, category } = JSON.parse(body);
 
-        if (!title || !description || !link || !category) {
+        if (!title || !embedLink || !originalLink || !category) {
           return res.status(400).json({ message: 'Missing required fields' });
         }
 
-        // Clean Google Drive Link
-        const fileIdMatch = link.match(/\/d\/(.+?)\//);
-        if (!fileIdMatch) {
-          return res.status(400).json({ message: 'Invalid Google Drive link' });
-        }
-        const cleanedLink = `https://drive.google.com/file/d/${fileIdMatch[1]}/preview`;
-
         await collection.updateOne(
           { _id: new ObjectId(id) },
-          { $set: { title, description, link: cleanedLink, category } }
+          { $set: { title, embedLink, originalLink, category } }
         );
 
         return res.status(200).json({ message: 'PDF updated successfully' });
