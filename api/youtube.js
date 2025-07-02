@@ -1,5 +1,5 @@
 import { ObjectId } from 'mongodb';
-import connectDB from '../utils/connectDB';
+import { connectDB } from '../utils/connectDB';
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
