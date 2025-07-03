@@ -1,5 +1,5 @@
-// backend/api/pagecontrol.js
 import { connectDB } from '../utils/connectDB.js';
+import { ObjectId } from 'mongodb';
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -21,20 +21,22 @@ export default async function handler(req, res) {
   }
 
   if (req.method === 'PUT') {
+    const { id } = req.query; // ✅ Getting ID from URL
+
     let body = '';
     req.on('data', chunk => {
       body += chunk.toString();
     });
 
     req.on('end', async () => {
-      const { page, enabled } = JSON.parse(body);
+      const { enabled } = JSON.parse(body);
 
-      if (!page || enabled === undefined) {
-        return res.status(400).json({ message: 'Page and enabled status are required' });
+      if (enabled === undefined) {
+        return res.status(400).json({ message: 'Enabled status is required' });
       }
 
       const updateResult = await collection.updateOne(
-        { page },
+        { _id: new ObjectId(id) }, // ✅ Match by ID
         { $set: { enabled } }
       );
 
