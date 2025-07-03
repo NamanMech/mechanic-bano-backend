@@ -16,8 +16,8 @@ export default async function handler(req, res) {
   const collection = db.collection('page_control');
 
   if (req.method === 'GET') {
-    const pages = await collection.find({}).toArray();
-    return res.status(200).json(pages);
+    const pageControls = await collection.find({}).toArray();
+    return res.status(200).json(pageControls);
   }
 
   if (req.method === 'PUT') {
@@ -29,11 +29,19 @@ export default async function handler(req, res) {
     req.on('end', async () => {
       const { page, enabled } = JSON.parse(body);
 
-      if (!page) {
-        return res.status(400).json({ message: 'Page name is required' });
+      if (!page || enabled === undefined) {
+        return res.status(400).json({ message: 'Page and enabled status are required' });
       }
 
-      await collection.updateOne({ page }, { $set: { enabled } });
+      const updateResult = await collection.updateOne(
+        { page },
+        { $set: { enabled } }
+      );
+
+      if (updateResult.matchedCount === 0) {
+        return res.status(404).json({ message: 'Page not found' });
+      }
+
       return res.status(200).json({ message: 'Page status updated successfully' });
     });
 
