@@ -1,6 +1,4 @@
-// api/subscription.js
 import { connectDB } from '../utils/connectDB.js';
-import { ObjectId } from 'mongodb';
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -12,53 +10,49 @@ export default async function handler(req, res) {
     return;
   }
 
-  const { type } = req.query;
+  const { type, email } = req.query;
 
   if (!type) return res.status(400).json({ message: 'Type is required' });
 
-  const client = await connectDB();
-  const db = client.db('mechanic_bano');
-  const usersCollection = db.collection('users');
+  if (!email) return res.status(400).json({ message: 'Email is required' });
 
-  if (type === 'check') {
-    // ✅ Check Subscription
-    if (req.method === 'GET') {
-      const { email } = req.query;
+  let client;
 
-      if (!email) return res.status(400).json({ message: 'Email is required' });
+  try {
+    client = await connectDB();
+    const db = client.db('mechanic_bano');
+    const usersCollection = db.collection('users');
 
+    if (type === 'check' && req.method === 'GET') {
       const user = await usersCollection.findOne({ email });
 
       if (!user) return res.status(404).json({ message: 'User not found' });
 
       const currentDate = new Date();
-      if (user.isSubscribed && user.subscriptionEnd && new Date(user.subscriptionEnd) > currentDate) {
-        return res.status(200).json({ isSubscribed: true });
-      } else {
-        return res.status(200).json({ isSubscribed: false });
-      }
+      const isSubscribed =
+        user.isSubscribed &&
+        user.subscriptionEnd &&
+        new Date(user.subscriptionEnd) > currentDate;
+
+      return res.status(200).json({ isSubscribed });
     }
-  }
 
-  if (type === 'expire') {
-    // ✅ Expire Subscription
-    if (req.method === 'PUT') {
-      const { email } = req.query;
+    if (type === 'expire' && req.method === 'PUT') {
+      const updateResult = await usersCollection.updateOne(
+        { email },
+        { $set: { isSubscribed: false, subscriptionEnd: null } }
+      );
 
-      if (!email) return res.status(400).json({ message: 'Email is required' });
+      if (updateResult.matchedCount === 0)
+        return res.status(404).json({ message: 'User not found' });
 
-      try {
-        await usersCollection.updateOne(
-          { email },
-          { $set: { isSubscribed: false, subscriptionEnd: null } }
-        );
-
-        return res.status(200).json({ message: 'Subscription expired successfully' });
-      } catch (error) {
-        return res.status(500).json({ message: 'Error expiring subscription' });
-      }
+      return res.status(200).json({ message: 'Subscription expired successfully' });
     }
-  }
 
-  return res.status(405).json({ message: 'Method Not Allowed' });
+    return res.status(405).json({ message: 'Method Not Allowed' });
+  } catch (error) {
+    return res.status(500).json({ message: 'Internal Server Error', error: error.message });
+  } finally {
+    if (client) await client.close();
+  }
 }
