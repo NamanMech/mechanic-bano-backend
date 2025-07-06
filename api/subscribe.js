@@ -1,5 +1,6 @@
 // backend/api/subscribe.js
 import { connectDB } from '../utils/connectDB.js';
+import { ObjectId } from 'mongodb';
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -13,7 +14,8 @@ export default async function handler(req, res) {
 
   const client = await connectDB();
   const db = client.db('mechanic_bano');
-  const collection = db.collection('users');
+  const userCollection = db.collection('users');
+  const planCollection = db.collection('subscription_plans');
 
   if (req.method === 'PUT') {
     const { email } = req.query;
@@ -28,18 +30,39 @@ export default async function handler(req, res) {
     });
 
     req.on('end', async () => {
-      const { days } = JSON.parse(body); // Subscription validity in days
+      const { planId } = JSON.parse(body); // Plan ID should come from frontend
 
-      if (!days) {
-        return res.status(400).json({ message: 'Days are required' });
+      if (!planId) {
+        return res.status(400).json({ message: 'Plan ID is required' });
       }
 
-      const subscriptionEnd = new Date();
-      subscriptionEnd.setDate(subscriptionEnd.getDate() + days);
+      // ✅ Find selected plan
+      const selectedPlan = await planCollection.findOne({ _id: new ObjectId(planId) });
 
-      const updateResult = await collection.updateOne(
+      if (!selectedPlan) {
+        return res.status(404).json({ message: 'Subscription plan not found' });
+      }
+
+      // ✅ Calculate subscription end date
+      const subscriptionEnd = new Date();
+      subscriptionEnd.setDate(subscriptionEnd.getDate() + selectedPlan.days);
+
+      // ✅ Update user subscription
+      const updateResult = await userCollection.updateOne(
         { email },
-        { $set: { isSubscribed: true, subscriptionEnd } }
+        {
+          $set: {
+            isSubscribed: true,
+            subscriptionEnd,
+            subscribedPlan: {
+              id: selectedPlan._id,
+              title: selectedPlan.title,
+              price: selectedPlan.price,
+              days: selectedPlan.days,
+              discount: selectedPlan.discount || 0
+            }
+          }
+        }
       );
 
       if (updateResult.matchedCount === 0) {
