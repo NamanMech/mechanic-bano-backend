@@ -17,7 +17,7 @@ function parseRequestBody(req) {
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, DELETE, PUT, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, PUT, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
   if (req.method === 'OPTIONS') {
@@ -32,7 +32,34 @@ export default async function handler(req, res) {
     const usersCollection = db.collection('users');
     const plansCollection = db.collection('subscription_plans');
 
-    // GET all users
+    // ✅ POST: Google Login User Create or Fetch
+    if (req.method === 'POST') {
+      const body = await parseRequestBody(req);
+
+      if (!body.email || !body.name) {
+        return res.status(400).json({ message: 'Email and Name are required.' });
+      }
+
+      const existingUser = await usersCollection.findOne({ email: body.email });
+
+      if (existingUser) {
+        return res.status(200).json(existingUser); // Return existing user
+      }
+
+      const newUser = {
+        email: body.email,
+        name: body.name,
+        picture: body.picture || '',
+        isSubscribed: false,
+        subscriptionEnd: null,
+      };
+
+      await usersCollection.insertOne(newUser);
+
+      return res.status(200).json(newUser);
+    }
+
+    // ✅ GET all users
     if (req.method === 'GET') {
       const users = await usersCollection.find().toArray();
       return res.status(200).json(users);
@@ -42,7 +69,7 @@ export default async function handler(req, res) {
       return res.status(400).json({ message: 'Email is required' });
     }
 
-    // DELETE user by email
+    // ✅ DELETE user by email
     if (req.method === 'DELETE') {
       const deleteResult = await usersCollection.deleteOne({ email });
 
@@ -53,7 +80,7 @@ export default async function handler(req, res) {
       return res.status(200).json({ message: 'User deleted successfully' });
     }
 
-    // PUT: Subscribe User
+    // ✅ PUT: Subscribe User
     if (req.method === 'PUT') {
       let body;
       try {
