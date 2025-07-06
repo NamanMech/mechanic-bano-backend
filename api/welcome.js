@@ -1,5 +1,21 @@
 import { connectDB } from '../utils/connectDB.js';
 
+function parseRequestBody(req) {
+  return new Promise((resolve, reject) => {
+    let body = '';
+    req.on('data', chunk => {
+      body += chunk.toString();
+    });
+    req.on('end', () => {
+      try {
+        resolve(JSON.parse(body));
+      } catch (err) {
+        reject(err);
+      }
+    });
+  });
+}
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, OPTIONS');
@@ -10,41 +26,43 @@ export default async function handler(req, res) {
     return;
   }
 
-  const client = await connectDB();
-  const db = client.db('mechanic_bano');
-  const collection = db.collection('welcome_note');
+  let client;
 
-  if (req.method === 'GET') {
-    const note = await collection.findOne({});
-    return res.status(200).json(note || { title: '', message: '' });
-  }
+  try {
+    client = await connectDB();
+    const db = client.db('mechanic_bano');
+    const collection = db.collection('welcome_note');
 
-  if (req.method === 'POST' || req.method === 'PUT') {
-    try {
-      let body = '';
-      req.on('data', chunk => {
-        body += chunk.toString();
-      });
-
-      req.on('end', async () => {
-        const { title, message } = JSON.parse(body);
-
-        if (!title || !message) {
-          return res.status(400).json({ message: 'Missing required fields' });
-        }
-
-        // Always keep one note (replace existing)
-        await collection.deleteMany({});
-        await collection.insertOne({ title, message });
-
-        return res.status(200).json({ message: 'Welcome note updated successfully' });
-      });
-    } catch (error) {
-      console.error(error);
-      return res.status(500).json({ message: 'Internal Server Error' });
+    if (req.method === 'GET') {
+      const note = await collection.findOne({});
+      return res.status(200).json(note || { title: '', message: '' });
     }
-    return;
-  }
 
-  return res.status(405).json({ message: 'Method Not Allowed' });
+    if (req.method === 'POST' || req.method === 'PUT') {
+      let body;
+      try {
+        body = await parseRequestBody(req);
+      } catch {
+        return res.status(400).json({ message: 'Invalid JSON body' });
+      }
+
+      const { title, message } = body;
+
+      if (!title || !message) {
+        return res.status(400).json({ message: 'Missing required fields' });
+      }
+
+      await collection.deleteMany({});
+      await collection.insertOne({ title, message });
+
+      return res.status(200).json({ message: 'Welcome note updated successfully' });
+    }
+
+    return res.status(405).json({ message: 'Method Not Allowed' });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: 'Internal Server Error', error: error.message });
+  } finally {
+    if (client) await client.close();
+  }
 }
