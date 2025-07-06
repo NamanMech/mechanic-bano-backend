@@ -27,18 +27,52 @@ export default async function handler(req, res) {
 
   const { id, type, email } = req.query;
 
+  let client;
   try {
-    const { db } = await connectDB(); // ✅ yahi ab sahi hai
+    client = await connectDB();
+    const db = client.db('mechanic_bano');
     const plansCollection = db.collection('subscription_plans');
     const usersCollection = db.collection('users');
 
+    // =================== User Subscription ===================
+    if (type === 'check' && req.method === 'GET') {
+      if (!email) return res.status(400).json({ message: 'Email is required' });
+
+      const user = await usersCollection.findOne({ email });
+      if (!user) return res.status(404).json({ message: 'User not found' });
+
+      const currentDate = new Date();
+      const isSubscribed =
+        user.isSubscribed &&
+        user.subscriptionEnd &&
+        new Date(user.subscriptionEnd) > currentDate;
+
+      return res.status(200).json({ isSubscribed });
+    }
+
+    if (type === 'expire' && req.method === 'PUT') {
+      if (!email) return res.status(400).json({ message: 'Email is required' });
+
+      const updateResult = await usersCollection.updateOne(
+        { email },
+        { $set: { isSubscribed: false, subscriptionEnd: null } }
+      );
+
+      if (updateResult.matchedCount === 0)
+        return res.status(404).json({ message: 'User not found' });
+
+      return res.status(200).json({ message: 'Subscription expired successfully' });
+    }
+
     // =================== Subscription Plans ===================
     if (!type) {
+      // GET All Plans
       if (req.method === 'GET') {
         const plans = await plansCollection.find().toArray();
         return res.status(200).json(plans);
       }
 
+      // CREATE or UPDATE Plan
       if (req.method === 'POST' || req.method === 'PUT') {
         let body;
         try {
@@ -73,6 +107,7 @@ export default async function handler(req, res) {
         }
       }
 
+      // DELETE Plan
       if (req.method === 'DELETE') {
         if (!id) return res.status(400).json({ message: 'ID is required' });
 
@@ -84,38 +119,10 @@ export default async function handler(req, res) {
       }
     }
 
-    // =================== User Subscription ===================
-    if (type === 'check' && req.method === 'GET') {
-      if (!email) return res.status(400).json({ message: 'Email is required' });
-
-      const user = await usersCollection.findOne({ email });
-      if (!user) return res.status(404).json({ message: 'User not found' });
-
-      const currentDate = new Date();
-      const isSubscribed =
-        user.isSubscribed &&
-        user.subscriptionEnd &&
-        new Date(user.subscriptionEnd) > currentDate;
-
-      return res.status(200).json({ isSubscribed });
-    }
-
-    if (type === 'expire' && req.method === 'PUT') {
-      if (!email) return res.status(400).json({ message: 'Email is required' });
-
-      const updateResult = await usersCollection.updateOne(
-        { email },
-        { $set: { isSubscribed: false, subscriptionEnd: null } }
-      );
-
-      if (updateResult.matchedCount === 0)
-        return res.status(404).json({ message: 'User not found' });
-
-      return res.status(200).json({ message: 'Subscription expired successfully' });
-    }
-
     return res.status(405).json({ message: 'Method Not Allowed' });
   } catch (error) {
     return res.status(500).json({ message: 'Internal Server Error', error: error.message });
+  } finally {
+    if (client) await client.close();
   }
 }
