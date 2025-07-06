@@ -4,17 +4,29 @@ import { MongoClient } from 'mongodb';
 const uri = process.env.MONGO_URI;
 
 if (!uri) {
-  throw new Error('Please define the MONGO_URI environment variable inside .env');
+  throw new Error('Please define the MONGO_URI environment variable');
 }
 
-let cached = global._mongoClientPromise;
+let cached = global.mongo;
 
 if (!cached) {
-  const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true });
-  cached = client.connect();
-  global._mongoClientPromise = cached;
+  cached = global.mongo = { conn: null, promise: null };
 }
 
 export async function connectDB() {
-  return await cached;
+  if (cached.conn) {
+    return cached.conn;
+  }
+
+  if (!cached.promise) {
+    cached.promise = MongoClient.connect(uri).then((client) => {
+      return {
+        client,
+        db: client.db('mechanic_bano'),
+      };
+    });
+  }
+
+  cached.conn = await cached.promise;
+  return cached.conn;
 }
