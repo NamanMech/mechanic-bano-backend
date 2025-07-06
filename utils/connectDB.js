@@ -4,27 +4,17 @@ import { MongoClient } from 'mongodb';
 const uri = process.env.MONGO_URI;
 
 if (!uri) {
-  throw new Error('Please define the MONGO_URI environment variable.');
+  throw new Error('Please define the MONGO_URI environment variable inside .env');
 }
 
-let cached = global.mongo;
+let cached = global._mongoClientPromise;
 
 if (!cached) {
-  cached = global.mongo = { conn: null, promise: null };
+  const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true });
+  cached = client.connect();
+  global._mongoClientPromise = cached;
 }
 
 export async function connectDB() {
-  if (cached.conn) {
-    return cached.conn;
-  }
-
-  if (!cached.promise) {
-    const client = new MongoClient(uri);
-    cached.promise = client.connect().then((client) => {
-      return client;
-    });
-  }
-
-  cached.conn = await cached.promise;
-  return cached.conn;
+  return await cached;
 }
