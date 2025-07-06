@@ -26,11 +26,11 @@ export default async function handler(req, res) {
     return;
   }
 
-  let client;
+  let db;
 
   try {
-    client = await connectDB();
-    const db = client.db('mechanic_bano');
+    const connection = await connectDB();
+    db = connection.db;  // Yeh line sahi hai
     const collection = db.collection('welcome_note');
 
     if (req.method === 'GET') {
@@ -62,7 +62,5 @@ export default async function handler(req, res) {
   } catch (error) {
     console.error(error);
     return res.status(500).json({ message: 'Internal Server Error', error: error.message });
-  } finally {
-    if (client) await client.close();
   }
 }
