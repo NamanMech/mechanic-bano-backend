@@ -1,6 +1,19 @@
-// api/users.js
 import { connectDB } from '../utils/connectDB.js';
 import { ObjectId } from 'mongodb';
+
+function parseRequestBody(req) {
+  return new Promise((resolve, reject) => {
+    let body = '';
+    req.on('data', chunk => (body += chunk.toString()));
+    req.on('end', () => {
+      try {
+        resolve(JSON.parse(body));
+      } catch (err) {
+        reject(err);
+      }
+    });
+  });
+}
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -12,54 +25,60 @@ export default async function handler(req, res) {
     return;
   }
 
-  const client = await connectDB();
-  const db = client.db('mechanic_bano');
-  const usersCollection = db.collection('users');
-  const plansCollection = db.collection('subscription_plans');
+  const { email } = req.query;
 
-  // ✅ Get All Users
-  if (req.method === 'GET') {
-    try {
+  let client;
+  try {
+    client = await connectDB();
+    const db = client.db('mechanic_bano');
+    const usersCollection = db.collection('users');
+    const plansCollection = db.collection('subscription_plans');
+
+    // GET all users
+    if (req.method === 'GET') {
       const users = await usersCollection.find().toArray();
       return res.status(200).json(users);
-    } catch (error) {
-      return res.status(500).json({ message: 'Error fetching users' });
     }
-  }
 
-  // ✅ Delete User
-  if (req.method === 'DELETE') {
-    const { email } = req.query;
+    if (!email) {
+      return res.status(400).json({ message: 'Email is required' });
+    }
 
-    if (!email) return res.status(400).json({ message: 'Email is required' });
+    // DELETE user by email
+    if (req.method === 'DELETE') {
+      const deleteResult = await usersCollection.deleteOne({ email });
 
-    try {
-      await usersCollection.deleteOne({ email });
+      if (deleteResult.deletedCount === 0) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+
       return res.status(200).json({ message: 'User deleted successfully' });
-    } catch (error) {
-      return res.status(500).json({ message: 'Error deleting user' });
     }
-  }
 
-  // ✅ Subscribe User
-  if (req.method === 'PUT') {
-    const { email } = req.query;
+    // PUT: Subscribe User
+    if (req.method === 'PUT') {
+      let body;
+      try {
+        body = await parseRequestBody(req);
+      } catch {
+        return res.status(400).json({ message: 'Invalid JSON body' });
+      }
 
-    if (!email) return res.status(400).json({ message: 'Email is required' });
+      const { planId } = body;
 
-    let body = '';
-    req.on('data', chunk => {
-      body += chunk.toString();
-    });
+      if (!planId) {
+        return res.status(400).json({ message: 'Plan ID is required' });
+      }
 
-    req.on('end', async () => {
-      const { planId } = JSON.parse(body);
-
-      if (!planId) return res.status(400).json({ message: 'Plan ID is required' });
+      if (!ObjectId.isValid(planId)) {
+        return res.status(400).json({ message: 'Invalid Plan ID' });
+      }
 
       const selectedPlan = await plansCollection.findOne({ _id: new ObjectId(planId) });
 
-      if (!selectedPlan) return res.status(404).json({ message: 'Subscription plan not found' });
+      if (!selectedPlan) {
+        return res.status(404).json({ message: 'Subscription plan not found' });
+      }
 
       const subscriptionEnd = new Date();
       subscriptionEnd.setDate(subscriptionEnd.getDate() + selectedPlan.days);
@@ -75,9 +94,9 @@ export default async function handler(req, res) {
               title: selectedPlan.title,
               price: selectedPlan.price,
               days: selectedPlan.days,
-              discount: selectedPlan.discount || 0
-            }
-          }
+              discount: selectedPlan.discount || 0,
+            },
+          },
         }
       );
 
@@ -86,10 +105,12 @@ export default async function handler(req, res) {
       }
 
       return res.status(200).json({ message: 'Subscription activated successfully' });
-    });
+    }
 
-    return;
+    return res.status(405).json({ message: 'Method Not Allowed' });
+  } catch (error) {
+    return res.status(500).json({ message: 'Internal Server Error', error: error.message });
+  } finally {
+    if (client) await client.close();
   }
-
-  return res.status(405).json({ message: 'Method Not Allowed' });
 }
