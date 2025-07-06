@@ -27,22 +27,18 @@ export default async function handler(req, res) {
 
   const { id, type, email } = req.query;
 
-  let client;
   try {
-    client = await connectDB();
-    const db = client.db('mechanic_bano');
+    const { db } = await connectDB(); // ✅ yahi ab sahi hai
     const plansCollection = db.collection('subscription_plans');
     const usersCollection = db.collection('users');
 
     // =================== Subscription Plans ===================
     if (!type) {
-      // GET All Plans
       if (req.method === 'GET') {
         const plans = await plansCollection.find().toArray();
         return res.status(200).json(plans);
       }
 
-      // CREATE or UPDATE Plan
       if (req.method === 'POST' || req.method === 'PUT') {
         let body;
         try {
@@ -77,7 +73,6 @@ export default async function handler(req, res) {
         }
       }
 
-      // DELETE Plan
       if (req.method === 'DELETE') {
         if (!id) return res.status(400).json({ message: 'ID is required' });
 
@@ -122,7 +117,5 @@ export default async function handler(req, res) {
     return res.status(405).json({ message: 'Method Not Allowed' });
   } catch (error) {
     return res.status(500).json({ message: 'Internal Server Error', error: error.message });
-  } finally {
-    if (client) await client.close();
   }
 }
