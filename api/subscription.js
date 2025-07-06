@@ -29,8 +29,10 @@ export default async function handler(req, res) {
 
   let client;
   try {
-    client = await connectDB();
-    const db = client.db('mechanic_bano');
+    const connection = await connectDB();
+    client = connection.client;
+    const db = connection.db;
+
     const plansCollection = db.collection('subscription_plans');
     const usersCollection = db.collection('users');
 
