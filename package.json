@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "type": "module",
   "dependencies": {
-    "mongodb": "^5.7.0"
+    "mongodb": "^5.7.0",
+    "google-auth-library": "^9.0.0"
   }
 }
