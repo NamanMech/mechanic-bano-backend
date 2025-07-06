@@ -35,10 +35,8 @@ export default async function handler(req, res) {
     return res.status(400).json({ message: 'Invalid ID' });
   }
 
-  let client;
   try {
-    client = await connectDB();
-    const db = client.db('mechanic_bano');
+    const { db } = await connectDB();
 
     const youtubeCollection = db.collection('youtube_videos');
     const pdfCollection = db.collection('pdfs');
@@ -47,7 +45,6 @@ export default async function handler(req, res) {
     const pageControlCollection = db.collection('page_control');
 
     // ------------ YOUTUBE ------------
-
     if (type === 'youtube') {
       if (req.method === 'GET') {
         const videos = await youtubeCollection.find().toArray();
@@ -97,7 +94,6 @@ export default async function handler(req, res) {
     }
 
     // ------------ PDF ------------
-
     if (type === 'pdf') {
       if (req.method === 'GET') {
         const pdfs = await pdfCollection.find().toArray();
@@ -147,7 +143,6 @@ export default async function handler(req, res) {
     }
 
     // ------------ LOGO ------------
-
     if (type === 'logo') {
       if (req.method === 'GET') {
         const logo = await logoCollection.findOne({});
@@ -172,7 +167,6 @@ export default async function handler(req, res) {
     }
 
     // ------------ SITENAME ------------
-
     if (type === 'sitename') {
       if (req.method === 'GET') {
         const siteName = await siteNameCollection.findOne({});
@@ -197,7 +191,6 @@ export default async function handler(req, res) {
     }
 
     // ------------ PAGE CONTROL ------------
-
     if (type === 'pagecontrol') {
       if (req.method === 'GET') {
         const pages = await pageControlCollection.find().toArray();
@@ -231,7 +224,5 @@ export default async function handler(req, res) {
     return res.status(405).json({ message: 'Method Not Allowed' });
   } catch (error) {
     return res.status(500).json({ message: 'Internal Server Error', error: error.message });
-  } finally {
-    if (client) await client.close();
   }
 }
