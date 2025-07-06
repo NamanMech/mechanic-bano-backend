@@ -3,7 +3,7 @@
   "routes": [
     { "src": "/api/general", "dest": "/api/general.js" },
     { "src": "/api/subscription", "dest": "/api/subscription.js" },
-    { "src": "/api/user", "dest": "/api/user.js" },
+    { "src": "/api/user", "dest": "/api/users.js" },
     { "src": "/api/welcome", "dest": "/api/welcome.js" },
     { "src": "/api", "dest": "/api/index.js" }
   ]
