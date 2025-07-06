@@ -27,10 +27,8 @@ export default async function handler(req, res) {
 
   const { email } = req.query;
 
-  let client;
   try {
-    client = await connectDB();
-    const db = client.db('mechanic_bano');
+    const { db } = await connectDB(); // ✅ Correct Structure
     const usersCollection = db.collection('users');
     const plansCollection = db.collection('subscription_plans');
 
@@ -110,7 +108,5 @@ export default async function handler(req, res) {
     return res.status(405).json({ message: 'Method Not Allowed' });
   } catch (error) {
     return res.status(500).json({ message: 'Internal Server Error', error: error.message });
-  } finally {
-    if (client) await client.close();
   }
 }
