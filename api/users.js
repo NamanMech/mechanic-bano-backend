@@ -25,10 +25,10 @@ export default async function handler(req, res) {
     return;
   }
 
-  const { email } = req.query;
+  const { email, type } = req.query;
 
   try {
-    const { db } = await connectDB(); // ✅ Correct Structure
+    const { db } = await connectDB();
     const usersCollection = db.collection('users');
     const plansCollection = db.collection('subscription_plans');
 
@@ -80,7 +80,7 @@ export default async function handler(req, res) {
       return res.status(200).json({ message: 'User deleted successfully' });
     }
 
-    // ✅ PUT: Subscribe User
+    // ✅ PUT: Handle Update User OR Subscribe User
     if (req.method === 'PUT') {
       let body;
       try {
@@ -89,6 +89,27 @@ export default async function handler(req, res) {
         return res.status(400).json({ message: 'Invalid JSON body' });
       }
 
+      // 🔹 Update User (When type=update)
+      if (type === 'update') {
+        const { name, picture } = body;
+
+        if (!name) {
+          return res.status(400).json({ message: 'Name is required for update' });
+        }
+
+        const updateResult = await usersCollection.updateOne(
+          { email },
+          { $set: { name, picture: picture || '' } }
+        );
+
+        if (updateResult.matchedCount === 0) {
+          return res.status(404).json({ message: 'User not found' });
+        }
+
+        return res.status(200).json({ message: 'User updated successfully' });
+      }
+
+      // 🔹 Subscribe User (Default)
       const { planId } = body;
 
       if (!planId) {
@@ -105,8 +126,7 @@ export default async function handler(req, res) {
         return res.status(404).json({ message: 'Subscription plan not found' });
       }
 
-      // ✅ Correct (Accurate Date Calculation)
-const subscriptionEnd = new Date(Date.now() + selectedPlan.days * 24 * 60 * 60 * 1000);
+      const subscriptionEnd = new Date(Date.now() + selectedPlan.days * 24 * 60 * 60 * 1000);
 
       const updateResult = await usersCollection.updateOne(
         { email },
