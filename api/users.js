@@ -105,8 +105,8 @@ export default async function handler(req, res) {
         return res.status(404).json({ message: 'Subscription plan not found' });
       }
 
-      const subscriptionEnd = new Date();
-      subscriptionEnd.setDate(subscriptionEnd.getDate() + selectedPlan.days);
+      // ✅ Correct (Accurate Date Calculation)
+const subscriptionEnd = new Date(Date.now() + selectedPlan.days * 24 * 60 * 60 * 1000);
 
       const updateResult = await usersCollection.updateOne(
         { email },
