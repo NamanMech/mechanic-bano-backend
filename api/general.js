@@ -4,7 +4,7 @@ import { ObjectId } from 'mongodb';
 function parseRequestBody(req) {
   return new Promise((resolve, reject) => {
     let body = '';
-    req.on('data', chunk => body += chunk.toString());
+    req.on('data', chunk => (body += chunk.toString()));
     req.on('end', () => {
       try {
         resolve(JSON.parse(body));
@@ -27,13 +27,8 @@ export default async function handler(req, res) {
 
   const { type, id } = req.query;
 
-  if (!type) {
-    return res.status(400).json({ message: 'Type is required' });
-  }
-
-  if (id && !ObjectId.isValid(id)) {
-    return res.status(400).json({ message: 'Invalid ID' });
-  }
+  if (!type) return res.status(400).json({ message: 'Type is required' });
+  if (id && !ObjectId.isValid(id)) return res.status(400).json({ message: 'Invalid ID' });
 
   try {
     const { db } = await connectDB();
@@ -44,7 +39,7 @@ export default async function handler(req, res) {
     const siteNameCollection = db.collection('site_name');
     const pageControlCollection = db.collection('page_control');
 
-    // ------------ YOUTUBE ------------
+    // ----------- YOUTUBE -----------
     if (type === 'youtube') {
       if (req.method === 'GET') {
         const videos = await youtubeCollection.find().toArray();
@@ -93,7 +88,7 @@ export default async function handler(req, res) {
       }
     }
 
-    // ------------ PDF ------------
+    // ----------- PDF -----------
     if (type === 'pdf') {
       if (req.method === 'GET') {
         const pdfs = await pdfCollection.find().toArray();
@@ -108,13 +103,15 @@ export default async function handler(req, res) {
           return res.status(400).json({ message: 'Invalid JSON body' });
         }
 
-        const { title, embedLink, originalLink, category } = body;
-        if (!title || !embedLink || !originalLink || !category) {
+        const { title, originalLink, category } = body;
+
+        // ✅ No embedLink check anymore
+        if (!title || !originalLink || !category) {
           return res.status(400).json({ message: 'Missing required fields' });
         }
 
         if (req.method === 'POST') {
-          const result = await pdfCollection.insertOne({ title, embedLink, originalLink, category });
+          const result = await pdfCollection.insertOne({ title, originalLink, category });
           return res.status(201).json({ message: 'PDF added successfully', result });
         }
 
@@ -123,7 +120,7 @@ export default async function handler(req, res) {
 
           const updateResult = await pdfCollection.updateOne(
             { _id: new ObjectId(id) },
-            { $set: { title, embedLink, originalLink, category } }
+            { $set: { title, originalLink, category } }
           );
 
           if (updateResult.matchedCount === 0) return res.status(404).json({ message: 'PDF not found' });
@@ -142,7 +139,7 @@ export default async function handler(req, res) {
       }
     }
 
-    // ------------ LOGO ------------
+    // ----------- LOGO -----------
     if (type === 'logo') {
       if (req.method === 'GET') {
         const logo = await logoCollection.findOne({});
@@ -166,7 +163,7 @@ export default async function handler(req, res) {
       }
     }
 
-    // ------------ SITENAME ------------
+    // ----------- SITENAME -----------
     if (type === 'sitename') {
       if (req.method === 'GET') {
         const siteName = await siteNameCollection.findOne({});
@@ -190,7 +187,7 @@ export default async function handler(req, res) {
       }
     }
 
-    // ------------ PAGE CONTROL ------------
+    // ----------- PAGE CONTROL -----------
     if (type === 'pagecontrol') {
       if (req.method === 'GET') {
         const pages = await pageControlCollection.find().toArray();
