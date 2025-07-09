@@ -1,10 +1,16 @@
 {
   "version": 2,
+  "experimental": {
+    "features": {
+      "blobStore": true
+    }
+  },
   "routes": [
     { "src": "/api/general", "dest": "/api/general.js" },
     { "src": "/api/subscription", "dest": "/api/subscription.js" },
     { "src": "/api/user", "dest": "/api/users.js" },
     { "src": "/api/welcome", "dest": "/api/welcome.js" },
-    { "src": "/api", "dest": "/api/index.js" }
+    { "src": "/api", "dest": "/api/index.js" },
+    { "src": "/api/blobUpload", "dest": "/api/blobUpload.js" }
   ]
 }
