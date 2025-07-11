@@ -2,7 +2,6 @@ import { connectDB } from '../utils/connectDB.js';
 import { ObjectId } from 'mongodb';
 import { createClient } from '@supabase/supabase-js';
 
-// ✅ Safe Supabase admin client
 const supabaseAdmin =
   process.env.SUPABASE_PROJECT_URL && process.env.SUPABASE_SERVICE_KEY
     ? createClient(process.env.SUPABASE_PROJECT_URL, process.env.SUPABASE_SERVICE_KEY)
@@ -112,24 +111,24 @@ export default async function handler(req, res) {
       }
 
       if (req.method === 'DELETE') {
-  const pdfDoc = await pdfCollection.findOne({ _id: new ObjectId(id) });
-  if (!pdfDoc) return res.status(404).json({ message: 'PDF not found' });
+        const pdfDoc = await pdfCollection.findOne({ _id: new ObjectId(id) });
+        if (!pdfDoc) return res.status(404).json({ message: 'PDF not found' });
 
-  // ✅ Supabase delete with correct file path
-  if (supabaseAdmin && pdfDoc.originalLink?.includes('/storage/v1/object/public/')) {
-    const relativePath = pdfDoc.originalLink.split('/storage/v1/object/public/')[1];
-    if (relativePath) {
-      const fullPath = `pdfs/${relativePath.split('/').pop()}`; // Ensure full path like pdfs/uuid-filename.pdf
-      const { error } = await supabaseAdmin.storage.from('pdfs').remove([fullPath]);
-      if (error) console.error('Supabase delete error:', error.message);
+        // ✅ Supabase delete with correct full path
+        if (supabaseAdmin && pdfDoc.originalLink?.includes('/storage/v1/object/public/')) {
+          const relativePath = pdfDoc.originalLink.split('/storage/v1/object/public/')[1];
+          if (relativePath) {
+            const { error } = await supabaseAdmin.storage.from('pdfs').remove([relativePath]);
+            if (error) console.error('Supabase delete error:', error.message);
+          }
+        }
+
+        const result = await pdfCollection.deleteOne({ _id: new ObjectId(id) });
+        if (result.deletedCount === 0) return res.status(404).json({ message: 'Failed to delete from DB' });
+
+        return res.status(200).json({ message: 'PDF deleted from Supabase and DB' });
+      }
     }
-  }
-
-  const result = await pdfCollection.deleteOne({ _id: new ObjectId(id) });
-  if (result.deletedCount === 0) return res.status(404).json({ message: 'Failed to delete from DB' });
-
-  return res.status(200).json({ message: 'PDF deleted from Supabase and DB' });
-}
 
     // ---------- LOGO ----------
     if (type === 'logo') {
