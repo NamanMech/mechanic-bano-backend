@@ -111,23 +111,28 @@ export default async function handler(req, res) {
       }
 
       if (req.method === 'DELETE') {
-        const pdfDoc = await pdfCollection.findOne({ _id: new ObjectId(id) });
-        if (!pdfDoc) return res.status(404).json({ message: 'PDF not found' });
+  const pdfDoc = await pdfCollection.findOne({ _id: new ObjectId(id) });
+  if (!pdfDoc) return res.status(404).json({ message: 'PDF not found' });
 
-        // ✅ Correct Supabase deletion
-        if (supabaseAdmin && pdfDoc.originalLink?.includes('/storage/v1/object/public/')) {
-          const relativePath = pdfDoc.originalLink.split('/storage/v1/object/public/')[1]; // pdfs/uuid-name.pdf
-          if (relativePath) {
-            console.log('🗑️ Deleting from Supabase:', relativePath);
-            const { error } = await supabaseAdmin.storage.from('pdfs').remove([relativePath]);
-            if (error) console.error('❌ Supabase delete error:', error.message);
-          }
-        }
+  if (supabaseAdmin && pdfDoc.originalLink?.includes('/storage/v1/object/public/')) {
+    const publicUrl = pdfDoc.originalLink;
+    const parts = publicUrl.split('/storage/v1/object/public/');
+    if (parts.length === 2) {
+      const relativePath = parts[1]; // gives: pdfs/pdfs/<filename>
+      console.log('✅ Final path to delete from Supabase:', relativePath);
 
-        const result = await pdfCollection.deleteOne({ _id: new ObjectId(id) });
-        if (result.deletedCount === 0) return res.status(404).json({ message: 'DB delete failed' });
-        return res.status(200).json({ message: 'PDF deleted from Supabase and DB' });
-      }
+      const { error } = await supabaseAdmin.storage.from('pdfs').remove([relativePath]);
+      if (error) console.error('❌ Supabase delete error:', error.message);
+    } else {
+      console.warn('⚠️ Could not parse file path from public URL');
+    }
+  }
+
+  const result = await pdfCollection.deleteOne({ _id: new ObjectId(id) });
+  if (result.deletedCount === 0) return res.status(404).json({ message: 'Failed to delete from DB' });
+
+  return res.status(200).json({ message: 'PDF deleted from Supabase and DB' });
+}
     }
 
     // ========== LOGO ==========
