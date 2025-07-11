@@ -115,13 +115,12 @@ export default async function handler(req, res) {
   if (!pdfDoc) return res.status(404).json({ message: 'PDF not found' });
 
   if (supabaseAdmin && pdfDoc.originalLink?.includes('/storage/v1/object/public/')) {
-    const relativePath = pdfDoc.originalLink.split('/storage/v1/object/public/')[1];
-    const fullPath = `pdfs/${relativePath}`;
-    console.log('➡️ Deleting file from Supabase:', fullPath);
-    const { data, error } = await supabaseAdmin.storage.from('pdfs').remove([fullPath]);
-    console.log('📝 Supabase remove response:', { data, error });
-  }
-
+  const relativePath = pdfDoc.originalLink.split('/storage/v1/object/public/')[1];
+  console.log('➡️ Raw relative path:', relativePath); // debug
+  const fullPath = relativePath; // ✅ Already starts with 'pdfs/'
+  const { data, error } = await supabaseAdmin.storage.from('pdfs').remove([fullPath]);
+  console.log('📝 Supabase remove response:', { data, error });
+}
   const result = await pdfCollection.deleteOne({ _id: new ObjectId(id) });
   if (result.deletedCount === 0) return res.status(404).json({ message: 'Failed to delete from DB' });
 
