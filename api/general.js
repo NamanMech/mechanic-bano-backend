@@ -1,5 +1,11 @@
 import { connectDB } from '../utils/connectDB.js';
 import { ObjectId } from 'mongodb';
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseAdmin = createClient(
+  process.env.SUPABASE_PROJECT_URL,
+  process.env.SUPABASE_SERVICE_KEY
+);
 
 function parseRequestBody(req) {
   return new Promise((resolve, reject) => {
@@ -39,7 +45,7 @@ export default async function handler(req, res) {
     const siteNameCollection = db.collection('site_name');
     const pageControlCollection = db.collection('page_control');
 
-    // ----------- YOUTUBE -----------
+    // ===================== YOUTUBE =====================
     if (type === 'youtube') {
       if (req.method === 'GET') {
         const videos = await youtubeCollection.find().toArray();
@@ -88,7 +94,7 @@ export default async function handler(req, res) {
       }
     }
 
-    // ----------- PDF -----------
+    // ===================== PDF =====================
     if (type === 'pdf') {
       if (req.method === 'GET') {
         const pdfs = await pdfCollection.find().toArray();
@@ -104,8 +110,6 @@ export default async function handler(req, res) {
         }
 
         const { title, originalLink, category } = body;
-
-        // ✅ No embedLink check anymore
         if (!title || !originalLink || !category) {
           return res.status(400).json({ message: 'Missing required fields' });
         }
@@ -132,14 +136,25 @@ export default async function handler(req, res) {
       if (req.method === 'DELETE') {
         if (!id) return res.status(400).json({ message: 'ID is required' });
 
-        const deleteResult = await pdfCollection.deleteOne({ _id: new ObjectId(id) });
-        if (deleteResult.deletedCount === 0) return res.status(404).json({ message: 'PDF not found' });
+        const pdfDoc = await pdfCollection.findOne({ _id: new ObjectId(id) });
+        if (!pdfDoc) return res.status(404).json({ message: 'PDF not found' });
 
-        return res.status(200).json({ message: 'PDF deleted successfully' });
+        // ✅ Delete file from Supabase
+        if (pdfDoc.originalLink) {
+          const filePath = pdfDoc.originalLink.split('/storage/v1/object/public/pdfs/')[1];
+          if (filePath) {
+            await supabaseAdmin.storage.from('pdfs').remove([`pdfs/${filePath}`]);
+          }
+        }
+
+        const deleteResult = await pdfCollection.deleteOne({ _id: new ObjectId(id) });
+        if (deleteResult.deletedCount === 0) return res.status(404).json({ message: 'PDF not deleted from DB' });
+
+        return res.status(200).json({ message: 'PDF deleted from Supabase and DB' });
       }
     }
 
-    // ----------- LOGO -----------
+    // ===================== LOGO =====================
     if (type === 'logo') {
       if (req.method === 'GET') {
         const logo = await logoCollection.findOne({});
@@ -163,7 +178,7 @@ export default async function handler(req, res) {
       }
     }
 
-    // ----------- SITENAME -----------
+    // ===================== SITENAME =====================
     if (type === 'sitename') {
       if (req.method === 'GET') {
         const siteName = await siteNameCollection.findOne({});
@@ -187,7 +202,7 @@ export default async function handler(req, res) {
       }
     }
 
-    // ----------- PAGE CONTROL -----------
+    // ===================== PAGE CONTROL =====================
     if (type === 'pagecontrol') {
       if (req.method === 'GET') {
         const pages = await pageControlCollection.find().toArray();
