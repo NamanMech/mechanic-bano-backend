@@ -2,6 +2,7 @@ import { connectDB } from '../utils/connectDB.js';
 import { ObjectId } from 'mongodb';
 import { createClient } from '@supabase/supabase-js';
 
+// Supabase Admin Client
 const supabaseAdmin = createClient(
   process.env.SUPABASE_PROJECT_URL,
   process.env.SUPABASE_SERVICE_KEY
@@ -26,13 +27,9 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-  if (req.method === 'OPTIONS') {
-    res.status(200).end();
-    return;
-  }
+  if (req.method === 'OPTIONS') return res.status(200).end();
 
   const { type, id } = req.query;
-
   if (!type) return res.status(400).json({ message: 'Type is required' });
   if (id && !ObjectId.isValid(id)) return res.status(400).json({ message: 'Invalid ID' });
 
@@ -45,56 +42,7 @@ export default async function handler(req, res) {
     const siteNameCollection = db.collection('site_name');
     const pageControlCollection = db.collection('page_control');
 
-    // ===================== YOUTUBE =====================
-    if (type === 'youtube') {
-      if (req.method === 'GET') {
-        const videos = await youtubeCollection.find().toArray();
-        return res.status(200).json(videos);
-      }
-
-      if (['POST', 'PUT'].includes(req.method)) {
-        let body;
-        try {
-          body = await parseRequestBody(req);
-        } catch {
-          return res.status(400).json({ message: 'Invalid JSON body' });
-        }
-
-        const { title, description, embedLink, originalLink, category } = body;
-        if (!title || !description || !embedLink || !originalLink || !category) {
-          return res.status(400).json({ message: 'Missing required fields' });
-        }
-
-        if (req.method === 'POST') {
-          const result = await youtubeCollection.insertOne({ title, description, embedLink, originalLink, category });
-          return res.status(201).json({ message: 'YouTube video added successfully', result });
-        }
-
-        if (req.method === 'PUT') {
-          if (!id) return res.status(400).json({ message: 'ID is required' });
-
-          const updateResult = await youtubeCollection.updateOne(
-            { _id: new ObjectId(id) },
-            { $set: { title, description, embedLink, originalLink, category } }
-          );
-
-          if (updateResult.matchedCount === 0) return res.status(404).json({ message: 'Video not found' });
-
-          return res.status(200).json({ message: 'Video updated successfully' });
-        }
-      }
-
-      if (req.method === 'DELETE') {
-        if (!id) return res.status(400).json({ message: 'ID is required' });
-
-        const deleteResult = await youtubeCollection.deleteOne({ _id: new ObjectId(id) });
-        if (deleteResult.deletedCount === 0) return res.status(404).json({ message: 'Video not found' });
-
-        return res.status(200).json({ message: 'Video deleted successfully' });
-      }
-    }
-
-    // ===================== PDF =====================
+    // ========== PDF ==========
     if (type === 'pdf') {
       if (req.method === 'GET') {
         const pdfs = await pdfCollection.find().toArray();
@@ -102,13 +50,7 @@ export default async function handler(req, res) {
       }
 
       if (['POST', 'PUT'].includes(req.method)) {
-        let body;
-        try {
-          body = await parseRequestBody(req);
-        } catch {
-          return res.status(400).json({ message: 'Invalid JSON body' });
-        }
-
+        const body = await parseRequestBody(req);
         const { title, originalLink, category } = body;
         if (!title || !originalLink || !category) {
           return res.status(400).json({ message: 'Missing required fields' });
@@ -116,45 +58,71 @@ export default async function handler(req, res) {
 
         if (req.method === 'POST') {
           const result = await pdfCollection.insertOne({ title, originalLink, category });
-          return res.status(201).json({ message: 'PDF added successfully', result });
+          return res.status(201).json({ message: 'PDF added', result });
         }
 
         if (req.method === 'PUT') {
-          if (!id) return res.status(400).json({ message: 'ID is required' });
-
-          const updateResult = await pdfCollection.updateOne(
+          const result = await pdfCollection.updateOne(
             { _id: new ObjectId(id) },
             { $set: { title, originalLink, category } }
           );
-
-          if (updateResult.matchedCount === 0) return res.status(404).json({ message: 'PDF not found' });
-
-          return res.status(200).json({ message: 'PDF updated successfully' });
+          return res.status(200).json({ message: 'PDF updated' });
         }
       }
 
       if (req.method === 'DELETE') {
-        if (!id) return res.status(400).json({ message: 'ID is required' });
-
         const pdfDoc = await pdfCollection.findOne({ _id: new ObjectId(id) });
         if (!pdfDoc) return res.status(404).json({ message: 'PDF not found' });
 
-        // ✅ Delete file from Supabase
+        // Delete from Supabase
         if (pdfDoc.originalLink) {
-          const filePath = pdfDoc.originalLink.split('/storage/v1/object/public/pdfs/')[1];
-          if (filePath) {
-            await supabaseAdmin.storage.from('pdfs').remove([`pdfs/${filePath}`]);
+          const parts = pdfDoc.originalLink.split('/pdfs/');
+          const fileName = parts[1];
+          if (fileName) {
+            await supabaseAdmin.storage.from('pdfs').remove([`pdfs/${fileName}`]);
           }
         }
 
-        const deleteResult = await pdfCollection.deleteOne({ _id: new ObjectId(id) });
-        if (deleteResult.deletedCount === 0) return res.status(404).json({ message: 'PDF not deleted from DB' });
-
-        return res.status(200).json({ message: 'PDF deleted from Supabase and DB' });
+        await pdfCollection.deleteOne({ _id: new ObjectId(id) });
+        return res.status(200).json({ message: 'PDF deleted from DB and Supabase' });
       }
     }
 
-    // ===================== LOGO =====================
+    // ========== YouTube ==========
+    if (type === 'youtube') {
+      if (req.method === 'GET') {
+        const data = await youtubeCollection.find().toArray();
+        return res.status(200).json(data);
+      }
+
+      if (['POST', 'PUT'].includes(req.method)) {
+        const body = await parseRequestBody(req);
+        const { title, description, embedLink, originalLink, category } = body;
+        if (!title || !description || !embedLink || !originalLink || !category) {
+          return res.status(400).json({ message: 'Missing fields' });
+        }
+
+        if (req.method === 'POST') {
+          const result = await youtubeCollection.insertOne({ title, description, embedLink, originalLink, category });
+          return res.status(201).json({ message: 'Video added', result });
+        }
+
+        if (req.method === 'PUT') {
+          const result = await youtubeCollection.updateOne(
+            { _id: new ObjectId(id) },
+            { $set: { title, description, embedLink, originalLink, category } }
+          );
+          return res.status(200).json({ message: 'Video updated' });
+        }
+      }
+
+      if (req.method === 'DELETE') {
+        await youtubeCollection.deleteOne({ _id: new ObjectId(id) });
+        return res.status(200).json({ message: 'Video deleted' });
+      }
+    }
+
+    // ========== Logo ==========
     if (type === 'logo') {
       if (req.method === 'GET') {
         const logo = await logoCollection.findOne({});
@@ -162,47 +130,33 @@ export default async function handler(req, res) {
       }
 
       if (req.method === 'PUT') {
-        let body;
-        try {
-          body = await parseRequestBody(req);
-        } catch {
-          return res.status(400).json({ message: 'Invalid JSON body' });
-        }
-
+        const body = await parseRequestBody(req);
         const { url } = body;
         if (!url) return res.status(400).json({ message: 'Logo URL is required' });
 
         await logoCollection.updateOne({}, { $set: { url } }, { upsert: true });
-
-        return res.status(200).json({ message: 'Logo updated successfully' });
+        return res.status(200).json({ message: 'Logo updated' });
       }
     }
 
-    // ===================== SITENAME =====================
+    // ========== Site Name ==========
     if (type === 'sitename') {
       if (req.method === 'GET') {
-        const siteName = await siteNameCollection.findOne({});
-        return res.status(200).json(siteName || { name: 'Mechanic Bano' });
+        const site = await siteNameCollection.findOne({});
+        return res.status(200).json(site || { name: 'Mechanic Bano' });
       }
 
       if (req.method === 'PUT') {
-        let body;
-        try {
-          body = await parseRequestBody(req);
-        } catch {
-          return res.status(400).json({ message: 'Invalid JSON body' });
-        }
-
+        const body = await parseRequestBody(req);
         const { name } = body;
         if (!name) return res.status(400).json({ message: 'Site name is required' });
 
         await siteNameCollection.updateOne({}, { $set: { name } }, { upsert: true });
-
-        return res.status(200).json({ message: 'Site name updated successfully' });
+        return res.status(200).json({ message: 'Site name updated' });
       }
     }
 
-    // ===================== PAGE CONTROL =====================
+    // ========== Page Control ==========
     if (type === 'pagecontrol') {
       if (req.method === 'GET') {
         const pages = await pageControlCollection.find().toArray();
@@ -210,31 +164,19 @@ export default async function handler(req, res) {
       }
 
       if (req.method === 'PUT') {
-        if (!id) return res.status(400).json({ message: 'ID is required' });
-
-        let body;
-        try {
-          body = await parseRequestBody(req);
-        } catch {
-          return res.status(400).json({ message: 'Invalid JSON body' });
-        }
-
+        const body = await parseRequestBody(req);
         const { enabled } = body;
-        if (enabled === undefined) return res.status(400).json({ message: 'Enabled status is required' });
-
-        const updateResult = await pageControlCollection.updateOne(
+        await pageControlCollection.updateOne(
           { _id: new ObjectId(id) },
           { $set: { enabled } }
         );
-
-        if (updateResult.matchedCount === 0) return res.status(404).json({ message: 'Page not found' });
-
-        return res.status(200).json({ message: 'Page status updated successfully' });
+        return res.status(200).json({ message: 'Page updated' });
       }
     }
 
     return res.status(405).json({ message: 'Method Not Allowed' });
   } catch (error) {
-    return res.status(500).json({ message: 'Internal Server Error', error: error.message });
+    console.error('Backend Error:', error.message);
+    return res.status(500).json({ message: 'Internal error', error: error.message });
   }
 }
