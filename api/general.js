@@ -111,23 +111,22 @@ export default async function handler(req, res) {
       }
 
       if (req.method === 'DELETE') {
-        const pdfDoc = await pdfCollection.findOne({ _id: new ObjectId(id) });
-        if (!pdfDoc) return res.status(404).json({ message: 'PDF not found' });
+  const pdfDoc = await pdfCollection.findOne({ _id: new ObjectId(id) });
+  if (!pdfDoc) return res.status(404).json({ message: 'PDF not found' });
 
-        // ✅ Supabase delete with correct full path
-        if (supabaseAdmin && pdfDoc.originalLink?.includes('/storage/v1/object/public/')) {
-          const relativePath = pdfDoc.originalLink.split('/storage/v1/object/public/')[1];
-          if (relativePath) {
-            const { error } = await supabaseAdmin.storage.from('pdfs').remove([relativePath]);
-            if (error) console.error('Supabase delete error:', error.message);
-          }
-        }
+  if (supabaseAdmin && pdfDoc.originalLink?.includes('/storage/v1/object/public/')) {
+    const relativePath = pdfDoc.originalLink.split('/storage/v1/object/public/')[1];
+    const fullPath = `pdfs/${relativePath}`;
+    console.log('➡️ Deleting file from Supabase:', fullPath);
+    const { data, error } = await supabaseAdmin.storage.from('pdfs').remove([fullPath]);
+    console.log('📝 Supabase remove response:', { data, error });
+  }
 
-        const result = await pdfCollection.deleteOne({ _id: new ObjectId(id) });
-        if (result.deletedCount === 0) return res.status(404).json({ message: 'Failed to delete from DB' });
+  const result = await pdfCollection.deleteOne({ _id: new ObjectId(id) });
+  if (result.deletedCount === 0) return res.status(404).json({ message: 'Failed to delete from DB' });
 
-        return res.status(200).json({ message: 'PDF deleted from Supabase and DB' });
-      }
+  return res.status(200).json({ message: 'PDF deleted from Supabase and DB' });
+}
     }
 
     // ---------- LOGO ----------
