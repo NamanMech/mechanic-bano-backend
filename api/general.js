@@ -156,7 +156,7 @@ export default async function handler(req, res) {
 
   return res.status(200).json({ message: 'PDF deleted successfully' });
 }
-
+    }
     // ========== LOGO ==========
     if (type === 'logo') {
       if (req.method === 'GET') {
