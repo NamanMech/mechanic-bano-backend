@@ -29,11 +29,10 @@ export default async function handler(req, res) {
 
   try {
     const { db } = await connectDB();
-
     const plansCollection = db.collection('subscription_plans');
     const usersCollection = db.collection('users');
 
-    // =================== Subscription Plans ===================
+    // ===== Subscription Plans =====
     if (!type) {
       // GET All Plans
       if (req.method === 'GET') {
@@ -49,29 +48,22 @@ export default async function handler(req, res) {
         } catch {
           return res.status(400).json({ message: 'Invalid JSON body' });
         }
-
         const { title, price, days, discount } = body;
-
         if (!title || !price || !days) {
           return res.status(400).json({ message: 'Missing required fields' });
         }
-
         if (req.method === 'POST') {
           await plansCollection.insertOne({ title, price, days, discount });
           return res.status(201).json({ message: 'Plan created successfully' });
         }
-
         if (req.method === 'PUT') {
           if (!id) return res.status(400).json({ message: 'ID is required' });
-
           const updateResult = await plansCollection.updateOne(
             { _id: new ObjectId(id) },
             { $set: { title, price, days, discount } }
           );
-
           if (updateResult.matchedCount === 0)
             return res.status(404).json({ message: 'Plan not found' });
-
           return res.status(200).json({ message: 'Plan updated successfully' });
         }
       }
@@ -79,46 +71,47 @@ export default async function handler(req, res) {
       // DELETE Plan
       if (req.method === 'DELETE') {
         if (!id) return res.status(400).json({ message: 'ID is required' });
-
         const deleteResult = await plansCollection.deleteOne({ _id: new ObjectId(id) });
         if (deleteResult.deletedCount === 0)
           return res.status(404).json({ message: 'Plan not found' });
-
         return res.status(200).json({ message: 'Plan deleted successfully' });
       }
     }
 
-    // =================== User Subscription ===================
+    // ===== User Subscription =====
     if (type === 'check' && req.method === 'GET') {
       if (!email) return res.status(400).json({ message: 'Email is required' });
-
       const user = await usersCollection.findOne({ email });
       if (!user) return res.status(404).json({ message: 'User not found' });
-
       const currentDate = new Date();
       const isSubscribed =
         user.isSubscribed &&
         user.subscriptionEnd &&
         new Date(user.subscriptionEnd) > currentDate;
-
       return res.status(200).json({ isSubscribed });
     }
 
     if (type === 'expire' && req.method === 'PUT') {
       if (!email) return res.status(400).json({ message: 'Email is required' });
-
       const updateResult = await usersCollection.updateOne(
         { email },
-        { $set: { isSubscribed: false, subscriptionEnd: null } }
+        {
+          $set: {
+            isSubscribed: false,
+            subscriptionEnd: null,
+            planId: null,
+            planTitle: null,
+            subscriptionStart: null,
+            subscribedPlan: null,
+          }
+        }
       );
-
       if (updateResult.matchedCount === 0)
         return res.status(404).json({ message: 'User not found' });
-
       return res.status(200).json({ message: 'Subscription expired successfully' });
     }
 
-    // =================== Subscribe (Activate Plan) ===================
+    // ===== Subscribe (Activate Plan) =====
     if (type === 'subscribe' && req.method === 'POST') {
       let body;
       try {
@@ -126,24 +119,17 @@ export default async function handler(req, res) {
       } catch {
         return res.status(400).json({ message: 'Invalid JSON body' });
       }
-
       const { email, planId } = body;
       if (!email || !planId) {
         return res.status(400).json({ message: 'Email and planId required' });
       }
-
-      // Get selected plan
       const plan = await plansCollection.findOne({ _id: new ObjectId(planId) });
       if (!plan) {
         return res.status(404).json({ message: 'Plan not found' });
       }
-
-      // Calculate subscription end date
       const startDate = new Date();
       const days = parseInt(plan.days) || 30;
       const endDate = new Date(startDate.getTime() + days * 24 * 60 * 60 * 1000);
-
-      // Update user subscription
       const updateResult = await usersCollection.updateOne(
         { email },
         {
@@ -157,7 +143,6 @@ export default async function handler(req, res) {
         },
         { upsert: true }
       );
-
       return res.status(200).json({
         message: 'Subscription activated',
         subscriptionEnd: endDate.toISOString(),
@@ -165,13 +150,11 @@ export default async function handler(req, res) {
       });
     }
 
-    // =================== User Subscription Info ===================
+    // ===== User Subscription Info =====
     if (type === 'userinfo' && req.method === 'GET') {
       if (!email) return res.status(400).json({ message: 'Email is required' });
-
       const user = await usersCollection.findOne({ email });
       if (!user) return res.status(404).json({ message: 'User not found' });
-
       return res.status(200).json({
         isSubscribed: user.isSubscribed ?? false,
         planTitle: user.planTitle ?? '',
