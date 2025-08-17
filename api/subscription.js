@@ -58,6 +58,9 @@ export default async function handler(req, res) {
         }
         if (req.method === 'PUT') {
           if (!id) return res.status(400).json({ message: 'ID is required' });
+          if (!ObjectId.isValid(id)) {
+            return res.status(400).json({ message: 'Invalid ID' });
+          }
           const updateResult = await plansCollection.updateOne(
             { _id: new ObjectId(id) },
             { $set: { title, price, days, discount } }
@@ -71,6 +74,9 @@ export default async function handler(req, res) {
       // DELETE Plan
       if (req.method === 'DELETE') {
         if (!id) return res.status(400).json({ message: 'ID is required' });
+        if (!ObjectId.isValid(id)) {
+          return res.status(400).json({ message: 'Invalid ID' });
+        }
         const deleteResult = await plansCollection.deleteOne({ _id: new ObjectId(id) });
         if (deleteResult.deletedCount === 0)
           return res.status(404).json({ message: 'Plan not found' });
@@ -99,9 +105,9 @@ export default async function handler(req, res) {
           $set: {
             isSubscribed: false,
             subscriptionEnd: null,
+            subscriptionStart: null,
             planId: null,
             planTitle: null,
-            subscriptionStart: null,
             subscribedPlan: null,
           }
         }
@@ -123,6 +129,9 @@ export default async function handler(req, res) {
       if (!email || !planId) {
         return res.status(400).json({ message: 'Email and planId required' });
       }
+      if (!ObjectId.isValid(planId)) {
+        return res.status(400).json({ message: 'Invalid Plan ID' });
+      }
       const plan = await plansCollection.findOne({ _id: new ObjectId(planId) });
       if (!plan) {
         return res.status(404).json({ message: 'Plan not found' });
@@ -135,8 +144,8 @@ export default async function handler(req, res) {
         {
           $set: {
             isSubscribed: true,
-            subscriptionStart: startDate.toISOString(),
-            subscriptionEnd: endDate.toISOString(),
+            subscriptionStart: startDate,
+            subscriptionEnd: endDate,
             planId: planId,
             planTitle: plan.title,
             subscribedPlan: {
@@ -146,7 +155,7 @@ export default async function handler(req, res) {
               days: plan.days,
               discount: plan.discount || 0,
             },
-          }
+          },
         },
         { upsert: true }
       );
@@ -162,11 +171,36 @@ export default async function handler(req, res) {
       if (!email) return res.status(400).json({ message: 'Email is required' });
       const user = await usersCollection.findOne({ email });
       if (!user) return res.status(404).json({ message: 'User not found' });
+
+      const currentDate = new Date();
+      if (user.subscriptionEnd && new Date(user.subscriptionEnd) <= currentDate) {
+        // Auto-expire
+        await usersCollection.updateOne(
+          { email },
+          {
+            $set: {
+              isSubscribed: false,
+              subscriptionStart: null,
+              subscriptionEnd: null,
+              planId: null,
+              planTitle: null,
+              subscribedPlan: null,
+            },
+          }
+        );
+        return res.status(200).json({
+          isSubscribed: false,
+          planTitle: '',
+          subscriptionStart: '',
+          subscriptionEnd: '',
+        });
+      }
+
       return res.status(200).json({
         isSubscribed: user.isSubscribed ?? false,
         planTitle: user.planTitle ?? '',
-        subscriptionStart: user.subscriptionStart ?? '',
-        subscriptionEnd: user.subscriptionEnd ?? '',
+        subscriptionStart: user.subscriptionStart ? user.subscriptionStart.toISOString() : '',
+        subscriptionEnd: user.subscriptionEnd ? user.subscriptionEnd.toISOString() : '',
       });
     }
 
