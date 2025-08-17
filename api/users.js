@@ -40,7 +40,6 @@ export default async function handler(req, res) {
       }
       const existingUser = await usersCollection.findOne({ email: body.email });
       if (existingUser) return res.status(200).json(existingUser);
-
       const newUser = {
         email: body.email,
         name: body.name,
@@ -65,7 +64,6 @@ export default async function handler(req, res) {
     if (req.method === 'GET' && type === 'info') {
       const user = await usersCollection.findOne({ email });
       if (!user) return res.status(404).json({ message: 'User not found' });
-
       return res.status(200).json({
         email: user.email,
         name: user.name,
@@ -93,32 +91,24 @@ export default async function handler(req, res) {
       } catch {
         return res.status(400).json({ message: 'Invalid JSON body' });
       }
-
       if (type === 'update') {
         // Update user profile info
         const { name, picture } = body;
         if (!name) return res.status(400).json({ message: 'Name is required for update' });
-
         const updateResult = await usersCollection.updateOne(
           { email },
           { $set: { name, picture: picture || '' } }
         );
-
         if (updateResult.matchedCount === 0) return res.status(404).json({ message: 'User not found' });
         return res.status(200).json({ message: 'User updated successfully' });
       }
-
       // Activate subscription
       const { planId } = body;
       if (!planId) return res.status(400).json({ message: 'Plan ID is required' });
       if (!ObjectId.isValid(planId)) return res.status(400).json({ message: 'Invalid Plan ID' });
-
       const selectedPlan = await plansCollection.findOne({ _id: new ObjectId(planId) });
       if (!selectedPlan) return res.status(404).json({ message: 'Subscription plan not found' });
-
-      // Calculate subscriptionEnd date
       const subscriptionEnd = new Date(Date.now() + selectedPlan.days * 24 * 60 * 60 * 1000);
-
       const updateResult = await usersCollection.updateOne(
         { email },
         {
@@ -135,11 +125,9 @@ export default async function handler(req, res) {
           },
         }
       );
-
       if (updateResult.matchedCount === 0) {
         return res.status(404).json({ message: 'User not found' });
       }
-
       return res.status(200).json({ message: 'Subscription activated successfully' });
     }
 
