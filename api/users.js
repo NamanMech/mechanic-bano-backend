@@ -32,19 +32,14 @@ export default async function handler(req, res) {
     const usersCollection = db.collection('users');
     const plansCollection = db.collection('subscription_plans');
 
-    // ✅ POST: Google Login User Create or Fetch
+    // POST: Create or fetch user by email & name (Google login)
     if (req.method === 'POST') {
       const body = await parseRequestBody(req);
-
       if (!body.email || !body.name) {
         return res.status(400).json({ message: 'Email and Name are required.' });
       }
-
       const existingUser = await usersCollection.findOne({ email: body.email });
-
-      if (existingUser) {
-        return res.status(200).json(existingUser); // Return existing user
-      }
+      if (existingUser) return res.status(200).json(existingUser);
 
       const newUser = {
         email: body.email,
@@ -52,35 +47,45 @@ export default async function handler(req, res) {
         picture: body.picture || '',
         isSubscribed: false,
         subscriptionEnd: null,
+        subscribedPlan: null,
       };
-
       await usersCollection.insertOne(newUser);
-
       return res.status(200).json(newUser);
     }
 
-    // ✅ GET all users
-    if (req.method === 'GET') {
+    // GET all users
+    if (req.method === 'GET' && !type) {
       const users = await usersCollection.find().toArray();
       return res.status(200).json(users);
     }
 
-    if (!email) {
-      return res.status(400).json({ message: 'Email is required' });
+    if (!email) return res.status(400).json({ message: 'Email is required' });
+
+    // GET: User full info including subscription details for profile screen
+    if (req.method === 'GET' && type === 'info') {
+      const user = await usersCollection.findOne({ email });
+      if (!user) return res.status(404).json({ message: 'User not found' });
+
+      return res.status(200).json({
+        email: user.email,
+        name: user.name,
+        picture: user.picture || '',
+        isSubscribed: user.isSubscribed ?? false,
+        subscriptionEnd: user.subscriptionEnd ? user.subscriptionEnd.toISOString() : null,
+        subscribedPlan: user.subscribedPlan ?? null,
+      });
     }
 
-    // ✅ DELETE user by email
+    // DELETE user by email
     if (req.method === 'DELETE') {
       const deleteResult = await usersCollection.deleteOne({ email });
-
       if (deleteResult.deletedCount === 0) {
         return res.status(404).json({ message: 'User not found' });
       }
-
       return res.status(200).json({ message: 'User deleted successfully' });
     }
 
-    // ✅ PUT: Handle Update User OR Subscribe User
+    // PUT: Update user or activate subscription
     if (req.method === 'PUT') {
       let body;
       try {
@@ -89,43 +94,29 @@ export default async function handler(req, res) {
         return res.status(400).json({ message: 'Invalid JSON body' });
       }
 
-      // 🔹 Update User (When type=update)
       if (type === 'update') {
+        // Update user profile info
         const { name, picture } = body;
-
-        if (!name) {
-          return res.status(400).json({ message: 'Name is required for update' });
-        }
+        if (!name) return res.status(400).json({ message: 'Name is required for update' });
 
         const updateResult = await usersCollection.updateOne(
           { email },
           { $set: { name, picture: picture || '' } }
         );
 
-        if (updateResult.matchedCount === 0) {
-          return res.status(404).json({ message: 'User not found' });
-        }
-
+        if (updateResult.matchedCount === 0) return res.status(404).json({ message: 'User not found' });
         return res.status(200).json({ message: 'User updated successfully' });
       }
 
-      // 🔹 Subscribe User (Default)
+      // Activate subscription
       const { planId } = body;
-
-      if (!planId) {
-        return res.status(400).json({ message: 'Plan ID is required' });
-      }
-
-      if (!ObjectId.isValid(planId)) {
-        return res.status(400).json({ message: 'Invalid Plan ID' });
-      }
+      if (!planId) return res.status(400).json({ message: 'Plan ID is required' });
+      if (!ObjectId.isValid(planId)) return res.status(400).json({ message: 'Invalid Plan ID' });
 
       const selectedPlan = await plansCollection.findOne({ _id: new ObjectId(planId) });
+      if (!selectedPlan) return res.status(404).json({ message: 'Subscription plan not found' });
 
-      if (!selectedPlan) {
-        return res.status(404).json({ message: 'Subscription plan not found' });
-      }
-
+      // Calculate subscriptionEnd date
       const subscriptionEnd = new Date(Date.now() + selectedPlan.days * 24 * 60 * 60 * 1000);
 
       const updateResult = await usersCollection.updateOne(
