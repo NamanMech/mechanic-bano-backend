@@ -158,10 +158,25 @@ export default async function handler(req, res) {
         { upsert: true }
       );
 
-      return res.status(200).json({ 
-        message: 'Subscription activated', 
+      return res.status(200).json({
+        message: 'Subscription activated',
         subscriptionEnd: endDate.toISOString(),
         plan: plan.title,
+      });
+    }
+
+    // =================== User Subscription Info ===================
+    if (type === 'userinfo' && req.method === 'GET') {
+      if (!email) return res.status(400).json({ message: 'Email is required' });
+
+      const user = await usersCollection.findOne({ email });
+      if (!user) return res.status(404).json({ message: 'User not found' });
+
+      return res.status(200).json({
+        isSubscribed: user.isSubscribed ?? false,
+        planTitle: user.planTitle ?? '',
+        subscriptionStart: user.subscriptionStart ?? '',
+        subscriptionEnd: user.subscriptionEnd ?? '',
       });
     }
 
