@@ -54,20 +54,20 @@ export default async function handler(req, res) {
 
       if (['POST', 'PUT'].includes(req.method)) {
         const body = await parseRequestBody(req);
-        const { title, description, embedLink, originalLink, category } = body;
+        const { title, description, embedLink, originalLink, category, isPremium = false } = body;
         if (!title || !description || !embedLink || !originalLink || !category) {
           return res.status(400).json({ message: 'Missing required fields' });
         }
 
         if (req.method === 'POST') {
-          const result = await youtubeCollection.insertOne({ title, description, embedLink, originalLink, category });
+          const result = await youtubeCollection.insertOne({ title, description, embedLink, originalLink, category, isPremium });
           return res.status(201).json({ message: 'YouTube video added', result });
         }
 
         if (req.method === 'PUT') {
           const result = await youtubeCollection.updateOne(
             { _id: new ObjectId(id) },
-            { $set: { title, description, embedLink, originalLink, category } }
+            { $set: { title, description, embedLink, originalLink, category, isPremium } }
           );
           if (result.matchedCount === 0) return res.status(404).json({ message: 'Not found' });
           return res.status(200).json({ message: 'Updated successfully' });
@@ -83,62 +83,62 @@ export default async function handler(req, res) {
 
     // ========== PDF ==========
     if (type === 'pdf') {
-  if (req.method === 'GET') {
-    const pdfs = await pdfCollection.find().toArray();
-    return res.status(200).json(pdfs);
-  }
+      if (req.method === 'GET') {
+        const pdfs = await pdfCollection.find().toArray();
+        return res.status(200).json(pdfs);
+      }
 
-  if (['POST', 'PUT'].includes(req.method)) {
-    const body = await parseRequestBody(req);
-    const { title, originalLink, category, price = 0 } = body;
+      if (['POST', 'PUT'].includes(req.method)) {
+        const body = await parseRequestBody(req);
+        const { title, originalLink, category, price = 0 } = body;
 
-    if (!title || !originalLink || !category) {
-      return res.status(400).json({ message: 'Missing required fields' });
-    }
-
-    if (req.method === 'POST') {
-      const result = await pdfCollection.insertOne({ title, originalLink, category, price });
-      return res.status(201).json({ message: 'PDF added', result });
-    }
-
-    if (req.method === 'PUT') {
-      const result = await pdfCollection.updateOne(
-        { _id: new ObjectId(id) },
-        { $set: { title, originalLink, category, price } }
-      );
-      if (result.matchedCount === 0) return res.status(404).json({ message: 'PDF not found' });
-      return res.status(200).json({ message: 'PDF updated' });
-    }
-  }
-
-  // DELETE stays unchanged
-  if (req.method === 'DELETE') {
-    const pdfDoc = await pdfCollection.findOne({ _id: new ObjectId(id) });
-    if (!pdfDoc) return res.status(404).json({ message: 'PDF not found' });
-
-    if (supabaseAdmin && pdfDoc.originalLink) {
-      try {
-        const urlObj = new URL(pdfDoc.originalLink);
-        const fullPath = urlObj.pathname.replace('/storage/v1/object/public/', '');
-        const decodedPath = decodeURIComponent(fullPath);
-        const bucketName = decodedPath.split('/')[0];
-        const filePath = decodedPath.substring(bucketName.length + 1);
-
-        const { error } = await supabaseAdmin.storage.from(bucketName).remove([filePath]);
-        if (error) {
-          console.error('❌ Supabase Error:', error);
-          return res.status(500).json({ message: 'Supabase deletion failed', error: error.message });
+        if (!title || !originalLink || !category) {
+          return res.status(400).json({ message: 'Missing required fields' });
         }
-      } catch (parseError) {
-        return res.status(400).json({ message: 'Invalid file URL', error: parseError.message });
+
+        if (req.method === 'POST') {
+          const result = await pdfCollection.insertOne({ title, originalLink, category, price });
+          return res.status(201).json({ message: 'PDF added', result });
+        }
+
+        if (req.method === 'PUT') {
+          const result = await pdfCollection.updateOne(
+            { _id: new ObjectId(id) },
+            { $set: { title, originalLink, category, price } }
+          );
+          if (result.matchedCount === 0) return res.status(404).json({ message: 'PDF not found' });
+          return res.status(200).json({ message: 'PDF updated' });
+        }
+      }
+
+      if (req.method === 'DELETE') {
+        const pdfDoc = await pdfCollection.findOne({ _id: new ObjectId(id) });
+        if (!pdfDoc) return res.status(404).json({ message: 'PDF not found' });
+
+        if (supabaseAdmin && pdfDoc.originalLink) {
+          try {
+            const urlObj = new URL(pdfDoc.originalLink);
+            const fullPath = urlObj.pathname.replace('/storage/v1/object/public/', '');
+            const decodedPath = decodeURIComponent(fullPath);
+            const bucketName = decodedPath.split('/')[0];
+            const filePath = decodedPath.substring(bucketName.length + 1);
+
+            const { error } = await supabaseAdmin.storage.from(bucketName).remove([filePath]);
+            if (error) {
+              console.error('❌ Supabase Error:', error);
+              return res.status(500).json({ message: 'Supabase deletion failed', error: error.message });
+            }
+          } catch (parseError) {
+            return res.status(400).json({ message: 'Invalid file URL', error: parseError.message });
+          }
+        }
+
+        const result = await pdfCollection.deleteOne({ _id: new ObjectId(id) });
+        if (result.deletedCount === 0) return res.status(404).json({ message: 'Failed to delete from DB' });
+        return res.status(200).json({ message: 'PDF deleted successfully' });
       }
     }
 
-    const result = await pdfCollection.deleteOne({ _id: new ObjectId(id) });
-    if (result.deletedCount === 0) return res.status(404).json({ message: 'Failed to delete from DB' });
-    return res.status(200).json({ message: 'PDF deleted successfully' });
-  }
-}
     // ========== LOGO ==========
     if (type === 'logo') {
       if (req.method === 'GET') {
