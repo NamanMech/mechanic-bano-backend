@@ -139,6 +139,13 @@ export default async function handler(req, res) {
             subscriptionEnd: endDate.toISOString(),
             planId: planId,
             planTitle: plan.title,
+            subscribedPlan: {
+              id: plan._id,
+              title: plan.title,
+              price: plan.price,
+              days: plan.days,
+              discount: plan.discount || 0,
+            },
           }
         },
         { upsert: true }
