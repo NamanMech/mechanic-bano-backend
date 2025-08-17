@@ -28,7 +28,7 @@ export default async function handler(req, res) {
   const { id, type, email } = req.query;
 
   try {
-    const { db } = await connectDB(); // ✅ Correct connection
+    const { db } = await connectDB();
 
     const plansCollection = db.collection('subscription_plans');
     const usersCollection = db.collection('users');
@@ -116,6 +116,53 @@ export default async function handler(req, res) {
         return res.status(404).json({ message: 'User not found' });
 
       return res.status(200).json({ message: 'Subscription expired successfully' });
+    }
+
+    // =================== Subscribe (Activate Plan) ===================
+    if (type === 'subscribe' && req.method === 'POST') {
+      let body;
+      try {
+        body = await parseRequestBody(req);
+      } catch {
+        return res.status(400).json({ message: 'Invalid JSON body' });
+      }
+
+      const { email, planId } = body;
+      if (!email || !planId) {
+        return res.status(400).json({ message: 'Email and planId required' });
+      }
+
+      // Get selected plan
+      const plan = await plansCollection.findOne({ _id: new ObjectId(planId) });
+      if (!plan) {
+        return res.status(404).json({ message: 'Plan not found' });
+      }
+
+      // Calculate subscription end date
+      const startDate = new Date();
+      const days = parseInt(plan.days) || 30;
+      const endDate = new Date(startDate.getTime() + days * 24 * 60 * 60 * 1000);
+
+      // Update user subscription
+      const updateResult = await usersCollection.updateOne(
+        { email },
+        {
+          $set: {
+            isSubscribed: true,
+            subscriptionStart: startDate.toISOString(),
+            subscriptionEnd: endDate.toISOString(),
+            planId: planId,
+            planTitle: plan.title,
+          }
+        },
+        { upsert: true }
+      );
+
+      return res.status(200).json({ 
+        message: 'Subscription activated', 
+        subscriptionEnd: endDate.toISOString(),
+        plan: plan.title,
+      });
     }
 
     return res.status(405).json({ message: 'Method Not Allowed' });
