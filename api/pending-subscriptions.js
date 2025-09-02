@@ -23,7 +23,7 @@ export default async function handler(req, res) {
         
         if (sub.screenshotFileName) {
           // Simple public URL - no signed URL needed
-          screenshotUrl = `https://owmdhryscnbiuvohqzh.supabase.co/storage/v1/object/public/screenshots/${sub.screenshotFileName}`;
+          screenshotUrl = `https://owmdhrvscnbiuvoihozb.supabase.co/storage/v1/object/public/screenshots/${sub.screenshotFileName}`;
         }
 
         return {
