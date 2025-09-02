@@ -14,6 +14,7 @@ const COLLECTIONS = {
   LOGO: 'logo',
   SITE_NAME: 'site_name',
   PAGE_CONTROL: 'page_control'
+  UPI: 'upi'
 };
 
 // Enhanced request body parser
@@ -75,6 +76,7 @@ export default async function handler(req, res) {
       logo: db.collection(COLLECTIONS.LOGO),
       siteName: db.collection(COLLECTIONS.SITE_NAME),
       pageControl: db.collection(COLLECTIONS.PAGE_CONTROL)
+      upi: db.collection(COLLECTIONS.UPI)
     };
 
     // ========== YOUTUBE ==========
@@ -386,6 +388,40 @@ export default async function handler(req, res) {
       success: false, 
       message: 'Internal server error', 
       error: process.env.NODE_ENV === 'development' ? err.message : undefined 
+    });
+  }
+}
+
+// ========== UPI ==========
+if (type === 'upi') {
+  if (req.method === 'GET') {
+    const upi = await collections.upi.findOne({});
+    return res.status(200).json({ 
+      success: true, 
+      data: upi || { upiId: '' } 
+    });
+  }
+
+  if (req.method === 'PUT') {
+    const body = await parseRequestBody(req);
+    const { upiId } = body;
+    
+    if (!upiId) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'UPI ID is required' 
+      });
+    }
+    
+    await collections.upi.updateOne(
+      {}, 
+      { $set: { upiId } }, 
+      { upsert: true }
+    );
+    
+    return res.status(200).json({ 
+      success: true, 
+      message: 'UPI ID updated successfully' 
     });
   }
 }
