@@ -26,12 +26,10 @@ export default async function handler(req, res) {
     return;
   }
 
-  let db;
-
+  let client;
   try {
-    // ConnectDB se direct database instance mil rahi hai ya connection?
-    const database = await connectDB();
-    db = database.db || database; // Based on your connectDB implementation
+    client = await connectDB();
+    const db = client.db();
     const collection = db.collection('welcome_note');
 
     if (req.method === 'GET') {
@@ -54,18 +52,18 @@ export default async function handler(req, res) {
       }
 
       await collection.deleteMany({});
-      await collection.insertOne({ title, message });
+      await collection.insertOne({ title, message, updatedAt: new Date() });
 
       return res.status(200).json({ message: 'Welcome note updated successfully' });
     }
 
     return res.status(405).json({ message: 'Method Not Allowed' });
   } catch (error) {
-    console.error('Server error:', error);
+    console.error('API Error:', error);
     return res.status(500).json({ message: 'Internal Server Error', error: error.message });
   } finally {
-    if (db && db.close) {
-      await db.close();
+    if (client) {
+      await client.close();
     }
   }
 }
