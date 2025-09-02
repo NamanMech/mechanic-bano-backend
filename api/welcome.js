@@ -17,10 +17,20 @@ function parseRequestBody(req) {
 }
 
 export default async function handler(req, res) {
-  // Set CORS headers to allow requests from your Netlify domain
-  res.setHeader('Access-Control-Allow-Origin', 'https://mechanic-bano-admin.netlify.app');
+  // Set CORS headers to allow requests from your Netlify domain and localhost for development
+  const allowedOrigins = [
+    'https://mechanic-bano-admin.netlify.app',
+    'http://localhost:3000' // Add other origins as needed
+  ];
+  
+  const origin = req.headers.origin;
+  if (allowedOrigins.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  }
+  
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
   
   // Handle preflight requests
   if (req.method === 'OPTIONS') {
