@@ -29,8 +29,9 @@ export default async function handler(req, res) {
   let db;
 
   try {
-    const connection = await connectDB();
-    db = connection.db;  // Yeh line sahi hai
+    // ConnectDB se direct database instance mil rahi hai ya connection?
+    const database = await connectDB();
+    db = database.db || database; // Based on your connectDB implementation
     const collection = db.collection('welcome_note');
 
     if (req.method === 'GET') {
@@ -60,7 +61,11 @@ export default async function handler(req, res) {
 
     return res.status(405).json({ message: 'Method Not Allowed' });
   } catch (error) {
-    console.error(error);
+    console.error('Server error:', error);
     return res.status(500).json({ message: 'Internal Server Error', error: error.message });
+  } finally {
+    if (db && db.close) {
+      await db.close();
+    }
   }
 }
