@@ -1,11 +1,5 @@
 import { connectDB } from '../utils/connectDB.js';
 import { ObjectId } from 'mongodb';
-import { createClient } from '@supabase/supabase-js';
-
-// Supabase service key client for admin operations
-const supabaseAdmin = process.env.SUPABASE_PROJECT_URL && process.env.SUPABASE_SERVICE_KEY
-  ? createClient(process.env.SUPABASE_PROJECT_URL, process.env.SUPABASE_SERVICE_KEY)
-  : null;
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -23,27 +17,20 @@ export default async function handler(req, res) {
     if (req.method === 'GET') {
       const subscriptions = await pendingSubscriptions.find().toArray();
       
-      // Generate signed URLs for admin panel
-      const subscriptionsWithUrls = await Promise.all(
-        subscriptions.map(async (sub) => {
-          if (sub.screenshotPath && supabaseAdmin) {
-            try {
-              const { data } = await supabaseAdmin.storage
-                .from('screenshots')
-                .createSignedUrl(sub.screenshotPath, 3600); // 1 hour
-              
-              return {
-                ...sub,
-                screenshotUrl: data?.signedUrl || null
-              };
-            } catch (error) {
-              console.error('Error creating signed URL:', error);
-              return { ...sub, screenshotUrl: null };
-            }
-          }
-          return sub;
-        })
-      );
+      // Generate public URLs for admin panel
+      const subscriptionsWithUrls = subscriptions.map(sub => {
+        let screenshotUrl = null;
+        
+        if (sub.screenshotFileName) {
+          // Simple public URL - no signed URL needed
+          screenshotUrl = `https://owmdhryscnbiuvohqzh.supabase.co/storage/v1/object/public/screenshots/${sub.screenshotFileName}`;
+        }
+
+        return {
+          ...sub,
+          screenshotUrl
+        };
+      });
 
       return res.status(200).json({ 
         success: true, 
@@ -52,20 +39,19 @@ export default async function handler(req, res) {
     }
 
     if (req.method === 'POST') {
-      const { email, planId, screenshotPath, userId, planTitle, planPrice } = req.body;
+      const { email, planId, screenshotFileName, planTitle, planPrice } = req.body;
       
-      if (!email || !planId || !screenshotPath || !userId) {
+      if (!email || !planId || !screenshotFileName) {
         return res.status(400).json({
           success: false,
-          message: 'Email, planId, screenshotPath, and userId are required'
+          message: 'Email, planId, and screenshotFileName are required'
         });
       }
 
       const result = await pendingSubscriptions.insertOne({
         email,
         planId,
-        screenshotPath, // File path store करेंगे
-        userId,
+        screenshotFileName, // Simple filename store करेंगे
         planTitle,
         planPrice,
         status: 'pending',
