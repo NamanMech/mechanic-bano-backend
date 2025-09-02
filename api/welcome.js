@@ -42,8 +42,8 @@ export default async function handler(req, res) {
   try {
     console.log('Connecting to database...');
     
-    // Get the database instance directly from connectDB
-    const db = await connectDB();
+    // Get the database connection
+    const { db } = await connectDB();
     console.log('Database connected successfully');
     
     const collection = db.collection('welcome_note');
@@ -86,8 +86,7 @@ export default async function handler(req, res) {
     console.error('API Error Details:', error);
     return res.status(500).json({ 
       message: 'Internal Server Error', 
-      error: error.message,
-      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      error: error.message
     });
   }
 }
