@@ -17,10 +17,11 @@ function parseRequestBody(req) {
 }
 
 export default async function handler(req, res) {
-  // Set CORS headers to allow requests from your Netlify domain and localhost for development
+  // Set CORS headers
   const allowedOrigins = [
     'https://mechanic-bano-admin.netlify.app',
-    'http://localhost:3000' // Add other origins as needed
+    'http://localhost:3000',
+    'http://localhost:5173'
   ];
   
   const origin = req.headers.origin;
@@ -38,44 +39,55 @@ export default async function handler(req, res) {
     return;
   }
 
-  let client;
   try {
-    client = await connectDB();
-    const db = client.db();
+    console.log('Connecting to database...');
+    
+    // Get the database instance directly from connectDB
+    const db = await connectDB();
+    console.log('Database connected successfully');
+    
     const collection = db.collection('welcome_note');
 
     if (req.method === 'GET') {
+      console.log('Processing GET request');
       const note = await collection.findOne({});
+      console.log('Found note:', note);
       return res.status(200).json(note || { title: '', message: '' });
     }
 
     if (req.method === 'POST' || req.method === 'PUT') {
+      console.log('Processing PUT/POST request');
       let body;
       try {
         body = await parseRequestBody(req);
-      } catch {
+        console.log('Parsed body:', body);
+      } catch (error) {
+        console.error('Error parsing body:', error);
         return res.status(400).json({ message: 'Invalid JSON body' });
       }
 
       const { title, message } = body;
 
       if (!title || !message) {
+        console.error('Missing fields:', { title, message });
         return res.status(400).json({ message: 'Missing required fields' });
       }
 
+      console.log('Updating welcome note with:', { title, message });
       await collection.deleteMany({});
       await collection.insertOne({ title, message, updatedAt: new Date() });
 
       return res.status(200).json({ message: 'Welcome note updated successfully' });
     }
 
+    console.error('Method not allowed:', req.method);
     return res.status(405).json({ message: 'Method Not Allowed' });
   } catch (error) {
-    console.error('API Error:', error);
-    return res.status(500).json({ message: 'Internal Server Error', error: error.message });
-  } finally {
-    if (client) {
-      await client.close();
-    }
+    console.error('API Error Details:', error);
+    return res.status(500).json({ 
+      message: 'Internal Server Error', 
+      error: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
   }
 }
