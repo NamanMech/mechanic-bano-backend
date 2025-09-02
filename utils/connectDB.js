@@ -8,69 +8,57 @@ if (!uri) {
   throw new Error('Please define the MONGO_URI environment variable');
 }
 
-let cached = global.mongo;
-
-if (!cached) {
-  cached = global.mongo = { conn: null, promise: null, lastConnected: null };
-}
-
-// Function to check if connection is stale (older than 5 minutes)
-function isConnectionStale() {
-  if (!cached.lastConnected) return true;
-  const fiveMinutesAgo = Date.now() - 5 * 60 * 1000;
-  return cached.lastConnected < fiveMinutesAgo;
-}
+// Use a simple caching approach that works in serverless environments
+let cachedClient = null;
+let cachedDb = null;
 
 export async function connectDB() {
-  // Return cached connection if available and not stale
-  if (cached.conn && !isConnectionStale()) {
+  // Return cached connection if available
+  if (cachedClient && cachedDb) {
     try {
-      // Verify connection is still alive
-      await cached.conn.client.db().admin().ping();
-      return cached.conn;
+      // Simple check to verify connection is still alive
+      await cachedDb.command({ ping: 1 });
+      return { client: cachedClient, db: cachedDb };
     } catch (error) {
       console.log('Database connection lost, reconnecting...');
       // Connection is dead, clear cache and reconnect
-      cached.conn = null;
-      cached.promise = null;
+      cachedClient = null;
+      cachedDb = null;
     }
   }
 
-  if (!cached.promise) {
-    cached.promise = MongoClient.connect(uri, {
+  try {
+    const client = new MongoClient(uri, {
       serverSelectionTimeoutMS: CONNECTION_TIMEOUT,
       maxPoolSize: 10,
       minPoolSize: 1,
-    }).then((client) => {
-      console.log('Connected to MongoDB successfully');
-      return {
-        client,
-        db: client.db(DB_NAME),
-      };
-    }).catch(error => {
-      console.error('Failed to connect to MongoDB:', error);
-      cached.promise = null; // Reset promise on failure
-      throw error;
     });
-  }
 
-  try {
-    cached.conn = await cached.promise;
-    cached.lastConnected = Date.now();
-    return cached.conn;
+    await client.connect();
+    const db = client.db(DB_NAME);
+    
+    // Test the connection
+    await db.command({ ping: 1 });
+    
+    console.log('Connected to MongoDB successfully');
+    
+    // Cache the connection
+    cachedClient = client;
+    cachedDb = db;
+    
+    return { client, db };
   } catch (error) {
-    cached.promise = null; // Reset promise on failure
+    console.error('Failed to connect to MongoDB:', error);
     throw error;
   }
 }
 
 // Optional: Add a function to close the connection
 export async function closeDB() {
-  if (cached.conn) {
-    await cached.conn.client.close();
-    cached.conn = null;
-    cached.promise = null;
-    cached.lastConnected = null;
+  if (cachedClient) {
+    await cachedClient.close();
+    cachedClient = null;
+    cachedDb = null;
     console.log('MongoDB connection closed');
   }
 }
