@@ -42,8 +42,8 @@ export default async function handler(req, res) {
   try {
     console.log('Connecting to database...');
     
-    // Get the database connection
-    const { db } = await connectDB();
+    // Get the database instance directly
+    const db = await connectDB();
     console.log('Database connected successfully');
     
     const collection = db.collection('welcome_note');
