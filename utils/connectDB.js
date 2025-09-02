@@ -8,7 +8,6 @@ if (!uri) {
   throw new Error('Please define the MONGO_URI environment variable');
 }
 
-// Use a simple caching approach that works in serverless environments
 let cachedClient = null;
 let cachedDb = null;
 
@@ -18,7 +17,7 @@ export async function connectDB() {
     try {
       // Simple check to verify connection is still alive
       await cachedDb.command({ ping: 1 });
-      return { client: cachedClient, db: cachedDb };
+      return cachedDb; // Return just the database instance
     } catch (error) {
       console.log('Database connection lost, reconnecting...');
       // Connection is dead, clear cache and reconnect
@@ -46,7 +45,7 @@ export async function connectDB() {
     cachedClient = client;
     cachedDb = db;
     
-    return { client, db };
+    return db; // Return just the database instance
   } catch (error) {
     console.error('Failed to connect to MongoDB:', error);
     throw error;
