@@ -15,12 +15,13 @@ export async function connectDB() {
   if (cachedDb && cachedClient) {
     try {
       await cachedClient.db(DB_NAME).command({ ping: 1 });
-      return { client: cachedClient, db: cachedDb };
+      return cachedDb;
     } catch {
       cachedClient = null;
       cachedDb = null;
     }
   }
+
   const client = new MongoClient(uri, {
     serverSelectionTimeoutMS: CONNECTION_TIMEOUT,
     maxPoolSize: 10,
@@ -29,13 +30,11 @@ export async function connectDB() {
 
   await client.connect();
   const db = client.db(DB_NAME);
-
   await db.command({ ping: 1 });
 
   cachedClient = client;
   cachedDb = db;
 
   console.log('Connected to MongoDB successfully');
-
-  return { client, db };
+  return db;
 }
