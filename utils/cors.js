@@ -1,19 +1,16 @@
-const allowedOrigins = [
-  "https://mechanic-bano-admin.netlify.app",
-  "http://localhost:3000",
-  "http://localhost:5173"
-];
-
 export function setCorsHeaders(req, res) {
+  const allowedOrigins = [
+    "https://mechanic-bano-admin.netlify.app",
+    "http://localhost:3000",
+    "http://localhost:5173"
+  ];
   const origin = req.headers.origin;
-
   if (allowedOrigins.includes(origin)) {
     res.setHeader("Access-Control-Allow-Origin", origin);
     res.setHeader("Access-Control-Allow-Credentials", "true");
   } else {
     res.setHeader("Access-Control-Allow-Origin", "null");
   }
-
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
   res.setHeader(
     "Access-Control-Allow-Headers",
@@ -23,8 +20,7 @@ export function setCorsHeaders(req, res) {
   if (req.method === "OPTIONS") {
     res.statusCode = 204;
     res.end();
-    return true; // Response ended
+    return true;
   }
-
   return false;
 }
