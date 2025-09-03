@@ -23,11 +23,11 @@
       ]
     }
   ],
-  "routes": [
-    { "src": "/api/general", "dest": "/api/general.js" },
-    { "src": "/api/subscription", "dest": "/api/subscription.js" },
-    { "src": "/api/user", "dest": "/api/users.js" },
-    { "src": "/api/welcome", "dest": "/api/welcome.js" },
-    { "src": "/api/pending-subscriptions", "dest": "/api/pending-subscriptions.js" }
+  "rewrites": [
+    { "source": "/api/general", "destination": "/api/general.js" },
+    { "source": "/api/subscription", "destination": "/api/subscription.js" },
+    { "source": "/api/user", "destination": "/api/users.js" },
+    { "source": "/api/welcome", "destination": "/api/welcome.js" },
+    { "source": "/api/pending-subscriptions", "destination": "/api/pending-subscriptions.js" }
   ]
 }
