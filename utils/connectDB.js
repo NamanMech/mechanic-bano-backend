@@ -8,43 +8,34 @@ if (!uri) {
   throw new Error('Please define the MONGO_URI environment variable');
 }
 
-// Simple connection caching for serverless environments
+let cachedClient = null;
 let cachedDb = null;
 
 export async function connectDB() {
-  // Return cached connection if available
-  if (cachedDb) {
+  if (cachedDb && cachedClient) {
     try {
-      // Verify connection is still alive
-      await cachedDb.command({ ping: 1 });
-      return cachedDb;
-    } catch (error) {
-      console.log('Database connection lost, reconnecting...');
+      await cachedClient.db(DB_NAME).command({ ping: 1 });
+      return { client: cachedClient, db: cachedDb };
+    } catch {
+      cachedClient = null;
       cachedDb = null;
     }
   }
+  const client = new MongoClient(uri, {
+    serverSelectionTimeoutMS: CONNECTION_TIMEOUT,
+    maxPoolSize: 10,
+    minPoolSize: 1,
+  });
 
-  try {
-    const client = new MongoClient(uri, {
-      serverSelectionTimeoutMS: CONNECTION_TIMEOUT,
-      maxPoolSize: 10,
-      minPoolSize: 1,
-    });
+  await client.connect();
+  const db = client.db(DB_NAME);
 
-    await client.connect();
-    const db = client.db(DB_NAME);
-    
-    // Test the connection
-    await db.command({ ping: 1 });
-    
-    console.log('Connected to MongoDB successfully');
-    
-    // Cache the connection
-    cachedDb = db;
-    
-    return db;
-  } catch (error) {
-    console.error('Failed to connect to MongoDB:', error);
-    throw error;
-  }
+  await db.command({ ping: 1 });
+
+  cachedClient = client;
+  cachedDb = db;
+
+  console.log('Connected to MongoDB successfully');
+
+  return { client, db };
 }
