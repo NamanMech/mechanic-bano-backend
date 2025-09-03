@@ -11,7 +11,6 @@ export function setCorsHeaders(req, res) {
     res.setHeader("Access-Control-Allow-Origin", origin);
     res.setHeader("Access-Control-Allow-Credentials", "true");
   } else {
-    // CORS restrict for unknown origins instead of '*'
     res.setHeader("Access-Control-Allow-Origin", "null");
   }
 
@@ -24,8 +23,8 @@ export function setCorsHeaders(req, res) {
   if (req.method === "OPTIONS") {
     res.statusCode = 204;
     res.end();
-    return true; // indicate that response has ended
+    return true; // Response ended
   }
 
-  return false; // continue normal flow for other request methods
+  return false;
 }
