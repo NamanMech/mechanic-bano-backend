@@ -287,20 +287,20 @@ export default async function handler(req, res) {
     else if (type === 'upi') {
       if (req.method === 'GET') {
         const upi = await collections.upi.findOne({});
-        return res.status(200).json({ success: true, data: upi || { upiId: '' } });
+        return res.status(200).json({ success: true, data: upi || { upiId: '', qrCode: '' } });
       }
 
       if (req.method === 'PUT') {
         const body = await parseJsonBody(req);
-        const { upiId } = body;
+        const { upiId, qrCode } = body;
 
         if (!upiId) {
           return res.status(400).json({ success: false, message: 'UPI ID is required' });
         }
 
-        await collections.upi.updateOne({}, { $set: { upiId } }, { upsert: true });
+        await collections.upi.updateOne({}, { $set: { upiId, qrCode } }, { upsert: true });
 
-        return res.status(200).json({ success: true, message: 'UPI ID updated successfully' });
+        return res.status(200).json({ success: true, message: 'UPI data updated successfully' });
       }
     }
 
