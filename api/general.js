@@ -3,6 +3,7 @@ import { ObjectId } from 'mongodb';
 import { createClient } from '@supabase/supabase-js';
 import { setCorsHeaders } from '../utils/cors.js';
 import { parseJsonBody } from '../utils/jsonParser.js';
+import busboy from 'busboy';
 
 const supabaseAdmin = process.env.SUPABASE_PROJECT_URL && process.env.SUPABASE_SERVICE_KEY
   ? createClient(process.env.SUPABASE_PROJECT_URL, process.env.SUPABASE_SERVICE_KEY)
@@ -16,6 +17,32 @@ const COLLECTIONS = {
   PAGE_CONTROL: 'page_control',
   UPI: 'upi',
 };
+
+// Helper function to upload file to Supabase
+async function uploadFileToSupabase(buffer, fileName, mimetype, bucketName = 'qr-codes') {
+  if (!supabaseAdmin) {
+    throw new Error('Supabase client not configured');
+  }
+
+  const { data, error } = await supabaseAdmin.storage
+    .from(bucketName)
+    .upload(fileName, buffer, {
+      cacheControl: '3600',
+      upsert: true,
+      contentType: mimetype
+    });
+
+  if (error) {
+    throw error;
+  }
+
+  // Get public URL
+  const { data: { publicUrl } } = supabaseAdmin.storage
+    .from(bucketName)
+    .getPublicUrl(data.path);
+
+  return publicUrl;
+}
 
 export default async function handler(req, res) {
   if (setCorsHeaders(req, res)) return;
@@ -48,8 +75,85 @@ export default async function handler(req, res) {
       upi: db.collection(COLLECTIONS.UPI),
     };
 
+    // UPI ROUTES with QR code upload
+    if (type === 'upi') {
+      if (req.method === 'GET') {
+        const upi = await collections.upi.findOne({});
+        return res.status(200).json({ success: true, data: upi || { upiId: '', qrCode: '' } });
+      }
+
+      if (req.method === 'PUT') {
+        // Check if request contains file upload
+        if (req.headers['content-type']?.includes('multipart/form-data')) {
+          return new Promise((resolve) => {
+            const bb = busboy({ headers: req.headers });
+            let upiId = '';
+            let qrCode = '';
+            let fileBuffer = null;
+            let fileName = '';
+            let mimetype = '';
+
+            bb.on('field', (name, value) => {
+              if (name === 'upiId') upiId = value;
+              if (name === 'qrCode') qrCode = value;
+            });
+
+            bb.on('file', (name, file, info) => {
+              if (name === 'qrCodeFile') {
+                fileName = `upi_qr_${Date.now()}_${info.filename}`;
+                mimetype = info.mimeType;
+                const chunks = [];
+                
+                file.on('data', (data) => {
+                  chunks.push(data);
+                });
+
+                file.on('end', () => {
+                  fileBuffer = Buffer.concat(chunks);
+                });
+              }
+            });
+
+            bb.on('close', async () => {
+              try {
+                if (fileBuffer) {
+                  qrCode = await uploadFileToSupabase(fileBuffer, fileName, mimetype);
+                }
+
+                if (!upiId) {
+                  res.status(400).json({ success: false, message: 'UPI ID is required' });
+                  return resolve();
+                }
+
+                await collections.upi.updateOne({}, { $set: { upiId, qrCode } }, { upsert: true });
+                res.status(200).json({ success: true, message: 'UPI data updated successfully' });
+                resolve();
+              } catch (error) {
+                console.error('Error processing request:', error);
+                res.status(500).json({ success: false, message: 'Internal server error' });
+                resolve();
+              }
+            });
+
+            req.pipe(bb);
+          });
+        } else {
+          // Handle JSON request
+          const body = await parseJsonBody(req);
+          const { upiId, qrCode } = body;
+
+          if (!upiId) {
+            return res.status(400).json({ success: false, message: 'UPI ID is required' });
+          }
+
+          await collections.upi.updateOne({}, { $set: { upiId, qrCode } }, { upsert: true });
+          return res.status(200).json({ success: true, message: 'UPI data updated successfully' });
+        }
+      }
+    }
+
     // YOUTUBE ROUTES
-    if (type === 'youtube') {
+    else if (type === 'youtube') {
       if (req.method === 'GET') {
         const videos = await collections.youtube.find().toArray();
         return res.status(200).json({ success: true, data: videos });
@@ -280,27 +384,6 @@ export default async function handler(req, res) {
         }
 
         return res.status(200).json({ success: true, message: 'Page updated successfully' });
-      }
-    }
-
-    // UPI ROUTES
-    else if (type === 'upi') {
-      if (req.method === 'GET') {
-        const upi = await collections.upi.findOne({});
-        return res.status(200).json({ success: true, data: upi || { upiId: '', qrCode: '' } });
-      }
-
-      if (req.method === 'PUT') {
-        const body = await parseJsonBody(req);
-        const { upiId, qrCode } = body;
-
-        if (!upiId) {
-          return res.status(400).json({ success: false, message: 'UPI ID is required' });
-        }
-
-        await collections.upi.updateOne({}, { $set: { upiId, qrCode } }, { upsert: true });
-
-        return res.status(200).json({ success: true, message: 'UPI data updated successfully' });
       }
     }
 
